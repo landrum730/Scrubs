@@ -23,12 +23,12 @@ async function withServer(run) {
 const post = (base, payload) => fetch(base + '/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
 test('all supplied styles are included once with their approved colors', () => {
-  assert.equal(catalog.length, 26);
-  assert.equal(new Set(catalog.map(p => p.id)).size, 26);
-  assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773', 'CK807']);
+  assert.equal(catalog.length, 28);
+  assert.equal(new Set(catalog.map(p => p.id)).size, 28);
+  assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773', 'CK807', 'LE256591', 'LE302536']);
   assert.equal(catalog.filter(p => p.category === 'Sets').length, 1);
   assert.equal(catalog.filter(p => p.category === 'Jackets').length, 2);
-  assert.ok(catalog.every(p => p.imageUrl.startsWith('https://')));
+  assert.ok(catalog.filter(p=>!p.id.startsWith('LE')).every(p => p.imageUrl.startsWith('https://')));
   assert.equal(catalog.find(p => p.id === 'CK962A').collection, 'Cherokee Workwear Originals Ultra');
   assert.equal(catalog.find(p => p.id === 'UNISEX-SET').collection, 'Cherokee Workwear Originals Ultra');
 });
@@ -158,7 +158,7 @@ test('older saved catalogs receive photos and collection corrections without ove
     assert.equal(products[0].imageUrl, 'https://example.com/custom-photo.jpg');
     assert.equal(products.find(p => p.id === 'CK962A').collection, 'Cherokee Workwear Originals Ultra');
     assert.equal(products.find(p => p.id === 'CK773').matchAnyCollection, true);
-    assert.ok(products.every(p => Object.keys(p.images).length));
+    assert.ok(products.filter(p=>!p.id.startsWith('LE')).every(p => Object.keys(p.images).length));
     const jogger = products.find(p=>p.id==='CK00034');
     assert.match(jogger.url, /allheart.com.*ckck0034/);
     assert.match(jogger.images.Black, /ck-ck0034-blk/);
@@ -209,7 +209,7 @@ test('orders need no department and capture catalog values rather than client pr
 });
 
 test('new approved styles migrate into saved catalogs and the removed jacket cannot be ordered', async () => {
-  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033','CK807'];
+  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033','CK807','LE256591','LE302536'];
   const old = structuredClone(catalog).filter(p=>!newIds.includes(p.id));
   old.forEach(p=>delete p.gender);
   old.push({...catalog.find(p=>p.id==='CK310'),id:'CK4350',sku:'CK4350'});
@@ -219,11 +219,11 @@ test('new approved styles migrate into saved catalogs and the removed jacket can
   const base = 'http://127.0.0.1:'+server.address().port;
   try {
     const products = await (await fetch(base+'/api/catalog')).json();
-    assert.equal(products.length,26);
+    assert.equal(products.length,28);
     assert.equal(products[0].name,'Administrator title');
     assert.equal(products[0].gender,'Women');
     assert.ok(!products.some(p=>p.id==='CK4350'));
-    assert.equal(products.filter(p=>p.gender==='Men').length,5);
+    assert.equal(products.filter(p=>p.gender==='Men').length,6);
     assert.equal(products.filter(p=>p.gender==='Unisex').length,1);
     assert.equal(products.filter(p=>p.id==='CK00038').length,1);
     old.push({...catalog[0],id:'CK4777',sku:'CK4777',gender:'Men',name:'One-pocket V-neck scrub top'});
@@ -240,4 +240,26 @@ test('new approved styles migrate into saved catalogs and the removed jacket can
     assert.throws(()=>validateOrder({employee,items:[...items,{id:'CK4350',size:'M',color:'Black',quantity:1}]}),/approved style/);
     assert.throws(()=>validateProduct({...catalog[0],gender:'Unknown'},'test'),/style fit/);
   } finally {await new Promise(resolve=>server.close(resolve));}
+});
+
+test('approved Lands End neutral tops count toward either set without changing pants or extra colors', () => {
+  for (const color of ['Grey','Dark grey','White']) {
+    const selection = [item('LE256591',color,3,{setColor:'Black'}),item('LE256591','Navy',2),item('CK278','Black',3),item('CK279','Navy',2)];
+    const order=validateOrder({employee,items:selection});
+    assert.equal(order.items[0].color,color);
+    assert.equal(order.items[0].setColor,'Black');
+    assert.equal(order.estimatedValue,null);
+    selection[0].setColor='Navy';
+    assert.throws(()=>validateOrder({employee,items:selection}),/allowance|Complete/);
+    selection[0].setColor='Black';selection[2].id='CK115';
+    assert.throws(()=>validateOrder({employee,items:selection}),/same collection/);
+  }
+  for (const color of ['Ivory','White']) {
+    const selection=[item('LE302536',color,3,{setColor:'Black'}),item('LE302536',color,2,{setColor:'Navy'}),items[2],items[3]];
+    assert.ok(validateOrder({employee,items:selection}).id);
+    assert.throws(()=>validateOrder({employee,items:[...items,item('LE302536',color,1,{setColor:'Black',allowance:'Long sleeves'})]}),/five sets only/);
+  }
+  assert.throws(()=>validateOrder({employee,items:items.map(i=>i.id==='CK115'?{...i,color:'Grey',setColor:'Black'}:i)}),/approved style/);
+  assert.throws(()=>validateProduct({...catalog.find(p=>p.id==='CK278'),colors:['Grey']},'test'),/only for approved tops/);
+  assert.deepEqual(validateProduct(catalog.find(p=>p.id==='LE256591'),'test').colors,['Navy','Black','Grey','Dark grey','White']);
 });

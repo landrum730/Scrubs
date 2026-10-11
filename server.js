@@ -4,7 +4,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { catalog } from './catalog.js';
-import { allowanceCounts, allowanceError, collectionError } from './public/policy.js';
+import { allowanceCounts, allowanceError, collectionError, approvedColors, isSetColor } from './public/policy.js';
 import { localStore, supabaseStore } from './storage.js';
 export { catalog, allowanceCounts };
 
@@ -22,8 +22,8 @@ export function validateProduct(input, id) {
   product.category = input.category;
   if (input.gender !== undefined && !['Women','Men','Unisex'].includes(input.gender)) throw Error('Choose women, men, or unisex for the style fit.');
   product.gender = input.gender ?? 'Unisex';
-  if (!Array.isArray(input.colors) || !input.colors.length || input.colors.some(c => !['Black', 'Navy', 'White'].includes(c))) throw Error('Choose approved colors.');
-  if (input.colors.includes('White') && input.category !== 'Tops') throw Error('White is allowed only for scrub tops.');
+  if (!Array.isArray(input.colors) || !input.colors.length || input.colors.some(c => !approvedColors.includes(c))) throw Error('Choose approved colors.');
+  if (input.colors.some(c=>!isSetColor(c)) && input.category !== 'Tops') throw Error('White, Ivory, Grey, and Dark grey are allowed only for approved tops.');
   product.colors = [...new Set(input.colors)];
   if (!Array.isArray(input.sizes) || !input.sizes.length || input.sizes.length > 30 || input.sizes.some(s => typeof s !== 'string' || !s.trim() || s.length > 30)) throw Error('Enter at least one valid size.');
   product.sizes = [...new Set(input.sizes.map(s => s.trim()))];
@@ -35,7 +35,7 @@ export function validateProduct(input, id) {
   const options = input.category === 'Tops' ? ['Tops', 'Long sleeves'] : [input.category];
   if (!Array.isArray(input.allowances) || !input.allowances.length || input.allowances.some(a => !options.includes(a))) throw Error('Choose an allowance supported by this category.');
   product.allowances = [...new Set(input.allowances)];
-  if (product.colors.includes('White') && !product.allowances.includes('Tops')) throw Error('White requires approval for one of the five scrub tops.');
+  if (product.colors.some(c=>!isSetColor(c)) && !product.allowances.includes('Tops')) throw Error('White requires approval for one of the five scrub tops.');
   if (product.allowances.includes('Long sleeves') && !product.colors.some(c => c === 'Black' || c === 'Navy')) throw Error('Additional long sleeves need an approved black or navy color.');
   if (typeof input.active !== 'boolean') throw Error('Choose whether the style is active.');
   product.active = input.active;
@@ -55,7 +55,7 @@ export function validateProduct(input, id) {
   if (input.images !== undefined) {
     if (!input.images || typeof input.images !== 'object' || Array.isArray(input.images)) throw Error('Enter valid color image links.');
     for (const [color, link] of Object.entries(input.images)) {
-      if (!['Black', 'Navy', 'White', 'default'].includes(color)) throw Error('Image colors must be Black, Navy, or White.');
+      if (![...approvedColors, 'default'].includes(color)) throw Error('Use an approved image color.');
       if (link) product.images[color] = imageLink(link);
     }
   }
@@ -80,9 +80,9 @@ export function validateOrder(input, products = catalog) {
     const allowance = item.allowance || product.category;
     if (!product.allowances.includes(allowance)) throw Error('This style is not approved for the selected allowance.');
     const setColor = item.setColor || item.color;
-    if (!['Black', 'Navy'].includes(setColor)) throw Error('Assign white tops to a black or navy set.');
-    if (item.color === 'White') {
-      if (allowance !== 'Tops') throw Error('White tops count toward the five sets only. Additional long sleeves must be black or navy.');
+    if (!['Black', 'Navy'].includes(setColor)) throw Error('Assign white or neutral tops to a black or navy set.');
+    if (!isSetColor(item.color)) {
+      if (allowance !== 'Tops') throw Error('White and neutral tops count toward the five sets only. Additional long sleeves must be black or navy.');
     } else if (setColor !== item.color) throw Error('The allowance color must match the garment color.');
     return { id: product.id, sku: product.sku, name: product.name, collection: product.collection, url: product.url, category: product.category, color: item.color, setColor, allowance, size: item.size, ...(needsInseam ? { inseam: item.inseam } : {}), quantity: item.quantity, unitPrice: product.price ?? null, lineValue: product.price == null ? null : Math.round(product.price * 100) * item.quantity / 100, matchAnyCollection: product.matchAnyCollection };
   });
@@ -108,7 +108,7 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
   const { loadCatalog: readCatalog, saveCatalog, saveOrder, loadOrders } = store;
   async function loadCatalog() {
     const saved = await readCatalog();
-    const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033','CK807'];
+    const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033','CK807','LE256591','LE302536'];
     const additions = catalog.filter(p => newIds.includes(p.id) && !saved.some(s => s.id === p.id));
     return [...saved, ...additions].filter(p => !['CK4350','CK4777'].includes(p.id)).map(product => {
       const initial = catalog.find(p => p.id === product.id);

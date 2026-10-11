@@ -10,7 +10,7 @@ async function api(url, options = {}) {
 }
 async function loadOrders() {
   const orders = await api('/api/admin/orders');
-  $('#orders').innerHTML = orders.length ? orders.map(order => `<article class="admin-order"><h3>${esc(order.employee.name)}</h3><p>${esc(order.employee.email)}</p><p>${esc(new Date(order.createdAt).toLocaleString())} · ${esc(order.status)}</p><ul>${order.items.map(item => `<li>${item.quantity} × ${esc(item.name)} (${esc(item.sku || item.id)}) — ${esc(item.color)}, size ${esc(item.size)}${item.inseam ? ' · Inseam: ' + esc(item.inseam) : ''} · ${esc(item.collection || 'Collection not recorded')}${item.allowance ? ' · ' + esc(item.allowance) : ''}${item.color === 'White' ? ' · counts toward ' + esc(item.setColor) + ' set' : ''}</li>`).join('')}</ul><p>${order.estimatedValue == null ? "" : "Estimated total value: $" + order.estimatedValue.toFixed(2)}</p><p class="reference">${esc(order.id)}</p></article>`).join('') : '<p>No orders submitted yet.</p>';
+  $('#orders').innerHTML = orders.length ? orders.map(order => `<article class="admin-order"><h3>${esc(order.employee.name)}</h3><p>${esc(order.employee.email)}</p><p>${esc(new Date(order.createdAt).toLocaleString())} · ${esc(order.status)}</p><ul>${order.items.map(item => `<li>${item.quantity} × ${esc(item.name)} (${esc(item.sku || item.id)}) — ${esc(item.color)}, size ${esc(item.size)}${item.inseam ? ' · Inseam: ' + esc(item.inseam) : ''} · ${esc(item.collection || 'Collection not recorded')}${item.allowance ? ' · ' + esc(item.allowance) : ''}${!['Black','Navy'].includes(item.color) ? ' · counts toward ' + esc(item.setColor) + ' set' : ''}</li>`).join('')}</ul><p>${order.estimatedValue == null ? "" : "Estimated total value: $" + order.estimatedValue.toFixed(2)}</p><p class="reference">${esc(order.id)}</p></article>`).join('') : '<p>No orders submitted yet.</p>';
 }
 async function loadCatalog() {
   products = await api('/api/admin/catalog');
@@ -38,7 +38,8 @@ function categoryChanged() {
   $('#inseam-options').hidden = !needsInseam;form.elements.inseams.required=needsInseam;
   $('#top-allowances').hidden = !tops; $('#white-option').hidden = !tops; $('#mix-option').hidden = !tops;
   if (!tops) form.elements.matchAnyCollection.checked = false;
-  if (!tops) form.querySelector('[value="White"]').checked = false;
+  $('#neutral-options').hidden = !tops;
+  if (!tops) form.querySelectorAll('[name="colors"]').forEach(input=>{if(!['Black','Navy'].includes(input.value)) input.checked=false;});
 }
 form.elements.category.onchange = categoryChanged;
 function openEditor(product = null) {
@@ -54,6 +55,9 @@ function openEditor(product = null) {
     form.elements.blackImage.value = product.images?.Black || '';
     form.elements.navyImage.value = product.images?.Navy || '';
     form.elements.whiteImage.value = product.images?.White || '';
+    form.elements.ivoryImage.value = product.images?.Ivory || '';
+    form.elements.greyImage.value = product.images?.Grey || '';
+    form.elements.darkGreyImage.value = product.images?.['Dark grey'] || '';
     form.elements.matchAnyCollection.checked = Boolean(product.matchAnyCollection);
     form.querySelectorAll('[name="colors"]').forEach(input => input.checked = product.colors.includes(input.value));
     form.querySelectorAll('[name="topAllowance"]').forEach(input => input.checked = product.allowances.includes(input.value));
@@ -65,7 +69,7 @@ $('#cancel-style').onclick = () => { $('#editor').hidden = true; editId = null; 
 form.onsubmit = async event => {
   event.preventDefault();
   const data = new FormData(form), category = data.get('category');
-  const product = { gender: data.get('gender'), price: data.get('price') === '' ? null : Number(data.get('price')), sku: data.get('sku'), name: data.get('name'), collection: data.get('collection'), category, url: data.get('url'), sizes: data.get('sizes').split(',').map(s => s.trim()).filter(Boolean), inseams: ['Pants','Sets'].includes(category) ? data.get('inseams').split(',').map(s=>s.trim()).filter(Boolean) : [], colors: data.getAll('colors'), allowances: category === 'Tops' ? data.getAll('topAllowance') : [category], active: form.elements.active.checked, matchAnyCollection: form.elements.matchAnyCollection.checked, imageUrl: data.get('imageUrl'), images: { Black: data.get('blackImage'), Navy: data.get('navyImage'), White: data.get('whiteImage') } };
+  const product = { gender: data.get('gender'), price: data.get('price') === '' ? null : Number(data.get('price')), sku: data.get('sku'), name: data.get('name'), collection: data.get('collection'), category, url: data.get('url'), sizes: data.get('sizes').split(',').map(s => s.trim()).filter(Boolean), inseams: ['Pants','Sets'].includes(category) ? data.get('inseams').split(',').map(s=>s.trim()).filter(Boolean) : [], colors: data.getAll('colors'), allowances: category === 'Tops' ? data.getAll('topAllowance') : [category], active: form.elements.active.checked, matchAnyCollection: form.elements.matchAnyCollection.checked, imageUrl: data.get('imageUrl'), images: { Black: data.get('blackImage'), Navy: data.get('navyImage'), White: data.get('whiteImage'), Ivory: data.get('ivoryImage'), Grey: data.get('greyImage'), 'Dark grey': data.get('darkGreyImage') } };
   $('#save-style').disabled = true; $('#catalog-status').textContent = 'Saving…';
   try {
     const saved = await api('/api/admin/catalog' + (editId ? '/' + encodeURIComponent(editId) : ''), { method: editId ? 'PUT' : 'POST', body: JSON.stringify(product) });

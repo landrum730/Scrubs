@@ -1,3 +1,5 @@
+export const approvedColors = ['Black', 'Navy', 'White', 'Ivory', 'Grey', 'Dark grey'];
+export const isSetColor = color => color === 'Black' || color === 'Navy';
 export const required = { Black: 3, Navy: 2 };
 export const buckets = ['Tops', 'Pants', 'Long sleeves', 'Jackets'];
 export const collectionKey = value => value.trim().toLowerCase().replace(/\s+/g, ' ');

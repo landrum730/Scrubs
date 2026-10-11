@@ -10,7 +10,7 @@ test('copied Data API URLs and project URLs use the same REST endpoint', async (
       assert.equal(address, 'https://test-project.supabase.co/rest/v1/scrubs_catalog?id=eq.approved&select=payload');
       return Response.json([]);
     } });
-    assert.equal((await store.loadCatalog()).length, 26);
+    assert.equal((await store.loadCatalog()).length, 28);
   }
   for (const suffix of ['/rest/v1/orders', '/dashboard', '/?key=test']) assert.throws(() => supabaseStore({ url: 'https://test-project.supabase.co' + suffix, key: 'test' }), /SUPABASE_URL/);
 });
