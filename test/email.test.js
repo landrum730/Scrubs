@@ -8,7 +8,7 @@ import {createServer} from '../server.js';
 const emailNotifier = options => microsoftEmailNotifier({tenantId:'11111111-1111-1111-1111-111111111111',clientId:'test-client',clientSecret:'test-key',from:'manager@landrument.com',...options});
 const body={employee:{name:'Test Employee',email:'employee@example.com'},items:[{id:'UNISEX-SET',size:'M',inseam:'Regular',color:'Black',quantity:3},{id:'UNISEX-SET',size:'M',inseam:'Tall',color:'Navy',quantity:2}]};
 async function serverTest(notifier,run){
- const dir=await mkdtemp(path.join(os.tmpdir(),'scrubs-email-'));const server=createServer({dataDir:dir,adminToken:'test-only',notifier});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'scrubs-email-'));const server=createServer({storage:'local',dataDir:dir,adminToken:'test-only',notifier});await new Promise(r=>server.listen(0,'127.0.0.1',r));
  try{await run('http://127.0.0.1:'+server.address().port);}finally{await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});}
 }
 const post=(base)=>fetch(base+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -42,7 +42,7 @@ test('missing email configuration still saves orders and clearly marks notificat
  });
 });
 test('failed persistence never sends an email',async()=>{
- let sent=false;const server=createServer({adminToken:'test-only',store:{loadCatalog:async()=>(await import('../catalog.js')).catalog,saveOrder:async()=>{throw Error('Failed storage');}},notifier:{configured:true,to:'manager@landrument.com',send:async()=>{sent=true;}}});await new Promise(r=>server.listen(0,'127.0.0.1',r));try{assert.equal((await post('http://127.0.0.1:'+server.address().port)).status,500);assert.equal(sent,false);}finally{await new Promise(r=>server.close(r));}
+ let sent=false;const server=createServer({storage:'local',adminToken:'test-only',store:{loadCatalog:async()=>(await import('../catalog.js')).catalog,saveOrder:async()=>{throw Error('Failed storage');}},notifier:{configured:true,to:'manager@landrument.com',send:async()=>{sent=true;}}});await new Promise(r=>server.listen(0,'127.0.0.1',r));try{assert.equal((await post('http://127.0.0.1:'+server.address().port)).status,500);assert.equal(sent,false);}finally{await new Promise(r=>server.close(r));}
 });
 
 test('Microsoft token failures prevent send requests and send timeouts report uncertainty',async()=>{
