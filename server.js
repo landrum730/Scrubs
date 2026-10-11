@@ -108,6 +108,9 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
       // Upgrade older saved catalogs without replacing administrator changes.
       const result = { ...product, inseams: product.inseams ?? initial?.inseams ?? (['Pants', 'Sets'].includes(product.category) ? ['Regular'] : []), matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
       if (product.id === 'CK962A' && product.collection === 'Cherokee' || product.id === 'UNISEX-SET' && product.collection === 'AllHeart') result.collection = initial.collection;
+      if (product.id === 'CK096' && product.url?.startsWith('https://www.uniformadvantage.com/cherokee-achieve-women-s-5-pocket-stretch-elastic-waist-drawstring-straight-leg-cargo-scrub-pants/CK096.html')) {
+        for (const field of ['name', 'url', 'images', 'imageUrl', 'inseams']) result[field] = initial[field];
+      }
       return result;
     });
   }

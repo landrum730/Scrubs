@@ -138,6 +138,7 @@ test('older saved catalogs receive photos and collection corrections without ove
   const old = structuredClone(catalog).map(p => { delete p.images; delete p.imageUrl; delete p.matchAnyCollection; delete p.inseams; return p; });
   old.find(p => p.id === 'CK962A').collection = 'Cherokee';
   old.find(p => p.id === 'UNISEX-SET').collection = 'AllHeart';
+  Object.assign(old.find(p => p.id === 'CK096'), { url: 'https://www.uniformadvantage.com/cherokee-achieve-women-s-5-pocket-stretch-elastic-waist-drawstring-straight-leg-cargo-scrub-pants/CK096.html', name: 'Old pants', images: { Black: 'https://example.com/old.jpg' }, inseams: ['Regular'], sizes: ['M'] });
   old[0].collection = 'Administrator customized collection';
   old[0].imageUrl = 'https://example.com/custom-photo.jpg';
   let saved;
@@ -153,6 +154,11 @@ test('older saved catalogs receive photos and collection corrections without ove
     assert.equal(products.find(p => p.id === 'CK962A').collection, 'Cherokee Workwear Originals Ultra');
     assert.equal(products.find(p => p.id === 'CK773').matchAnyCollection, true);
     assert.ok(products.every(p => Object.keys(p.images).length));
+    const replacement = products.find(p => p.id === 'CK096');
+    assert.match(replacement.url, /allheart.com/);
+    assert.match(replacement.images.Black, /ck-ck096--blk/);
+    assert.deepEqual(replacement.inseams, ['Petite', 'Regular', 'Tall']);
+    assert.deepEqual(replacement.sizes, ['M']);
     const selection = [item('CK962A', 'Black', 3), item('CK272', 'Black', 3), item('CK773', 'White', 2, { setColor: 'Navy' }), item('CK096', 'Navy', 2)];
     assert.equal((await post(base, { employee, items: selection })).status, 201);
     assert.equal(saved.items[0].collection, 'Cherokee Workwear Originals Ultra');

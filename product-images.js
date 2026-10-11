@@ -17,8 +17,8 @@ export const supplierImages = {
     "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw2aec857f/CK936/CK936_030526_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
   },
   "CK096": {
-    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwffa57e33/CK096/CK096_050426_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
-    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwd28694b2/CK096/CK096_050426_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+    "Navy": "https://allheart.com/cdn/shop/files/1_ck-ck096--nav_650.jpg?v=1786990042",
+    "Black": "https://allheart.com/cdn/shop/files/1_ck-ck096--blk_650.jpg?v=1786990043"
   },
   "CK953": {
     "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw9f921a8f/CK953/CK953_031026_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
