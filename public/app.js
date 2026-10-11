@@ -11,8 +11,10 @@ function renderProducts(filter = 'All') {
   $('#product-count').textContent = products.length + ' approved options';
   const groups = new Map();
   for (const p of products) {
-    const key = p.gender + ':' + (p.matchAnyCollection ? 'underscrubs' : collectionKey(p.collection));
-    if (!groups.has(key)) groups.set(key, { gender: p.gender, name: p.matchAnyCollection ? 'Mix-and-match underscrub tops' : p.collection, items: [], wildcard: p.matchAnyCollection });
+    const separateUnderscrubs = p.matchAnyCollection && !p.displayCollection;
+    const section = p.displayCollection || p.collection;
+    const key = p.gender + ':' + (separateUnderscrubs ? 'underscrubs' : collectionKey(section));
+    if (!groups.has(key)) groups.set(key, { gender: p.gender, name: separateUnderscrubs ? 'Mix-and-match underscrub tops' : section, items: [], wildcard: separateUnderscrubs });
     groups.get(key).items.push(p);
   }
   for (const group of groups.values()) group.items.sort((a,b)=>['Tops','Pants','Sets','Jackets'].indexOf(a.category)-['Tops','Pants','Sets','Jackets'].indexOf(b.category));
