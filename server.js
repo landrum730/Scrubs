@@ -20,6 +20,8 @@ export function validateProduct(input, id) {
   if (url.protocol !== 'https:' || url.username || url.password) throw Error('Use an HTTPS product link without credentials.');
   if (!['Tops', 'Pants', 'Sets', 'Jackets'].includes(input.category)) throw Error('Choose a valid category.');
   product.category = input.category;
+  if (input.gender !== undefined && !['Women','Men','Unisex'].includes(input.gender)) throw Error('Choose women, men, or unisex for the style fit.');
+  product.gender = input.gender ?? 'Unisex';
   if (!Array.isArray(input.colors) || !input.colors.length || input.colors.some(c => !['Black', 'Navy', 'White'].includes(c))) throw Error('Choose approved colors.');
   if (input.colors.includes('White') && input.category !== 'Tops') throw Error('White is allowed only for scrub tops.');
   product.colors = [...new Set(input.colors)];
@@ -105,10 +107,13 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
   store ||= storage === 'supabase' ? supabaseStore({ url: process.env.SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY }) : localStore(dataDir);
   const { loadCatalog: readCatalog, saveCatalog, saveOrder, loadOrders } = store;
   async function loadCatalog() {
-    return (await readCatalog()).map(product => {
+    const saved = await readCatalog();
+    const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK4777'];
+    const additions = catalog.filter(p => newIds.includes(p.id) && !saved.some(s => s.id === p.id));
+    return [...saved, ...additions].filter(p => p.id !== 'CK4350').map(product => {
       const initial = catalog.find(p => p.id === product.id);
       // Upgrade older saved catalogs without replacing administrator changes.
-      const result = { ...product, price: product.price === undefined ? initial?.price ?? null : product.price, inseams: product.inseams ?? initial?.inseams ?? (['Pants', 'Sets'].includes(product.category) ? ['Regular'] : []), matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
+      const result = { ...product, gender: product.gender ?? initial?.gender ?? 'Unisex', price: product.price === undefined ? initial?.price ?? null : product.price, inseams: product.inseams ?? initial?.inseams ?? (['Pants', 'Sets'].includes(product.category) ? ['Regular'] : []), matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
       if (product.id === 'CK962A' && product.collection === 'Cherokee' || product.id === 'UNISEX-SET' && product.collection === 'AllHeart') result.collection = initial.collection;
       if (product.id === 'CK096' && product.url?.startsWith('https://www.uniformadvantage.com/cherokee-achieve-women-s-5-pocket-stretch-elastic-waist-drawstring-straight-leg-cargo-scrub-pants/CK096.html')) {
         for (const field of ['name', 'url', 'images', 'imageUrl', 'inseams']) result[field] = initial[field];

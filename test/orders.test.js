@@ -23,8 +23,8 @@ async function withServer(run) {
 const post = (base, payload) => fetch(base + '/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
 test('all supplied styles are included once with their approved colors', () => {
-  assert.equal(catalog.length, 15);
-  assert.equal(new Set(catalog.map(p => p.id)).size, 15);
+  assert.equal(catalog.length, 22);
+  assert.equal(new Set(catalog.map(p => p.id)).size, 22);
   assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773']);
   assert.equal(catalog.filter(p => p.category === 'Sets').length, 1);
   assert.equal(catalog.filter(p => p.category === 'Jackets').length, 2);
@@ -60,7 +60,7 @@ test('white underscrubs count toward either set color, never twice or toward ext
 test('complete sets supply both pieces; long sleeves and jackets are separate optional allowances', () => {
   assert.ok(validateOrder({ employee, items: [item('UNISEX-SET', 'Black', 3), item('UNISEX-SET', 'Navy', 2)] }).id);
   assert.ok(validateOrder({ employee, items: [item('UNISEX-SET', 'Black', 2), item('CK953', 'Black', 1), item('CK272', 'Black', 1), item('UNISEX-SET', 'Navy', 2)] }).id);
-  const extras = [item('CK962A', 'Black', 1, { allowance: 'Long sleeves' }), item('CK4881CL', 'Navy', 1, { allowance: 'Long sleeves' }), item('CK4350', 'Black', 1), item('CK00013', 'Navy', 1)];
+  const extras = [item('CK962A', 'Black', 1, { allowance: 'Long sleeves' }), item('CK4881CL', 'Navy', 1, { allowance: 'Long sleeves' }), item('CK310', 'Black', 1), item('CK00013', 'Navy', 1)];
   assert.equal(validateOrder({ employee, items: [...items, ...extras] }).items.length, 8);
   for (const extra of extras) assert.throws(() => validateOrder({ employee, items: [...items, ...extras, extra] }), /at most 1/);
   assert.throws(() => validateOrder({ employee, items: [...items, item('CK00038', 'Black', 1, { allowance: 'Long sleeves' })] }), /not approved/);
@@ -107,14 +107,14 @@ test('administrator can add, edit, and retire styles; changes persist and orders
   const selected = [{ ...items[0], id: saved.id }, ...items.slice(1)];
   assert.equal((await post(base, { employee, items: selected })).status, 201);
   base = await restart();
-  let publicCatalog = await (await fetch(base + '/api/catalog')).json(); assert.equal(publicCatalog.length, 16); assert.ok(publicCatalog.some(p => p.id === saved.id));
+  let publicCatalog = await (await fetch(base + '/api/catalog')).json(); assert.equal(publicCatalog.length, catalog.length + 1); assert.ok(publicCatalog.some(p => p.id === saved.id));
   const edited = { ...saved, name: 'Updated top', sizes: ['L'] };
   assert.equal((await fetch(base + '/api/admin/catalog/' + saved.id, { method: 'PUT', headers: auth, body: JSON.stringify(edited) })).status, 200);
   assert.equal((await post(base, { employee, items: selected })).status, 400);
   selected[0].size = 'L'; assert.equal((await post(base, { employee, items: selected })).status, 201);
   assert.equal((await fetch(base + '/api/admin/catalog/' + saved.id, { method: 'PUT', headers: auth, body: JSON.stringify({ ...edited, active: false }) })).status, 200);
   base = await restart();
-  publicCatalog = await (await fetch(base + '/api/catalog')).json(); assert.equal(publicCatalog.length, 15);
+  publicCatalog = await (await fetch(base + '/api/catalog')).json(); assert.equal(publicCatalog.length, catalog.length);
   assert.equal((await post(base, { employee, items: selected })).status, 400);
   const adminCatalog = await (await fetch(base + '/api/admin/catalog', { headers: auth })).json(); assert.equal(adminCatalog.find(p => p.id === saved.id).active, false);
   const orders = await (await fetch(base + '/api/admin/orders', { headers: auth })).json();
@@ -202,4 +202,33 @@ test('orders need no department and capture catalog values rather than client pr
   assert.throws(()=>validateProduct({...catalog[0],price:-1},'test'),/retail price/);
   assert.throws(()=>validateProduct({...catalog[0],price:Infinity},'test'),/retail price/);
   assert.throws(()=>validateProduct({...catalog[0],price:1.234},'test'),/retail price/);
+});
+
+test('new approved styles migrate into saved catalogs and the removed jacket cannot be ordered', async () => {
+  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK4777'];
+  const old = structuredClone(catalog).filter(p=>!newIds.includes(p.id));
+  old.forEach(p=>delete p.gender);
+  old.push({...catalog.find(p=>p.id==='CK310'),id:'CK4350',sku:'CK4350'});
+  old[0].name = 'Administrator title';
+  const server = createServer({store:{loadCatalog:async()=>structuredClone(old)},adminToken:'test-only-token'});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const base = 'http://127.0.0.1:'+server.address().port;
+  try {
+    const products = await (await fetch(base+'/api/catalog')).json();
+    assert.equal(products.length,22);
+    assert.equal(products[0].name,'Administrator title');
+    assert.equal(products[0].gender,'Women');
+    assert.ok(!products.some(p=>p.id==='CK4350'));
+    assert.equal(products.filter(p=>p.gender==='Men').length,4);
+    assert.equal(products.filter(p=>p.gender==='Unisex').length,2);
+    assert.equal(products.filter(p=>p.id==='CK00038').length,1);
+    old.push({...catalog.find(p=>p.id==='CK657'),active:false});
+    const adminProducts=await (await fetch(base+'/api/admin/catalog',{headers:auth})).json();
+    assert.equal(adminProducts.filter(p=>p.id==='CK657').length,1);
+    assert.equal(adminProducts.find(p=>p.id==='CK657').active,false);
+    const mens=[item('CK00027','Black',3),item('CK278','Black',3),item('CK783','Navy',2),item('CK279','Navy',2)];
+    assert.equal(validateOrder({employee,items:mens}).items.length,4);
+    assert.throws(()=>validateOrder({employee,items:[...items,{id:'CK4350',size:'M',color:'Black',quantity:1}]}),/approved style/);
+    assert.throws(()=>validateProduct({...catalog[0],gender:'Unknown'},'test'),/style fit/);
+  } finally {await new Promise(resolve=>server.close(resolve));}
 });

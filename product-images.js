@@ -58,5 +58,37 @@ export const supplierImages = {
   "CK00013": {
     "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw3ccc6114/CK00013/CK00013_091026_NAVY_1_S_HV.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
     "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwd2f9670c/CK00013/CK00013_091026_BLACK_1_S_HV.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
-  }
+  },
+  "CK310": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwe89b3b44/CK310/CK310_091126_BLACK_1_S_HV.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw3f563184/CK310/CK310_091126_NAVY_1_S_HV.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK657": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwc1a0c8e8/CK657/CK657_021926_BLACK_1.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwe17eff55/CK657/CK657_021926_NAVY_1.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK610": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw903e45d8/CK610/CK610_041624_BLACK_1.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwbeb15b72/CK610/CK610_041624_NAVY_1.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK00027": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw5ddf2ddb/CK00027/CK00027_070426_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw6929866c/CK00027/CK00027_070426_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK278": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwd420529f/CK278/CK278_031026_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw6328f2da/CK278/CK278_031026_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK279": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw2f729789/CK279/CK279_031926_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwa7e4bc24/CK279/CK279_031926_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK783": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw56d2d79d/CK783/CK783_031026_BLACK_1_S_EH.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw04ca45a9/CK783/CK783_031026_NAVY_1_S_EH.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK4777": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwc4b8b2e4/CK4777/CK4777_021826_BLACK_1.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw77e86f25/CK4777/CK4777_021826_NAVY_1.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+}
 };

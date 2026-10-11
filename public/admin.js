@@ -14,7 +14,7 @@ async function loadOrders() {
 }
 async function loadCatalog() {
   products = await api('/api/admin/catalog');
-  $('#admin-catalog').innerHTML = products.map(p => `<article class="catalog-row"><div><strong>${esc(p.name)}</strong><p>${esc(p.collection)} · ${esc(p.sku)} · ${esc(p.category)}</p><small>${esc(p.colors.join(', '))} · ${esc(p.sizes.join(', '))}</small></div><span class="state ${p.active ? '' : 'retired'}">${p.active ? 'Active' : 'Retired'}</span><button class="outline" data-edit="${esc(p.id)}">Edit <span class="sr-only">${esc(p.name)}</span></button></article>`).join('');
+  $('#admin-catalog').innerHTML = products.map(p => `<article class="catalog-row"><div><strong>${esc(p.name)}</strong><p>${esc(p.collection)} · ${esc(p.sku)} · ${esc(p.category)} · ${esc(p.gender)}</p><small>${esc(p.colors.join(', '))} · ${esc(p.sizes.join(', '))}</small></div><span class="state ${p.active ? '' : 'retired'}">${p.active ? 'Active' : 'Retired'}</span><button class="outline" data-edit="${esc(p.id)}">Edit <span class="sr-only">${esc(p.name)}</span></button></article>`).join('');
   document.querySelectorAll('[data-edit]').forEach(button => button.onclick = () => openEditor(products.find(p => p.id === button.dataset.edit)));
 }
 $('#login').onsubmit = async event => {
@@ -46,7 +46,7 @@ function openEditor(product = null) {
   $('#editor-title').textContent = product ? 'Edit approved style' : 'Add approved style';
   $('#catalog-status').textContent = '';
   if (product) {
-    for (const key of ['sku', 'name', 'collection', 'url', 'category']) form.elements[key].value = product[key];
+    for (const key of ['sku', 'name', 'collection', 'url', 'category', 'gender']) form.elements[key].value = product[key];
     form.elements.price.value = product.price ?? '';
     form.elements.sizes.value = product.sizes.join(', ');
     form.elements.inseams.value = (product.inseams || []).join(', '); form.elements.active.checked = product.active;
@@ -65,7 +65,7 @@ $('#cancel-style').onclick = () => { $('#editor').hidden = true; editId = null; 
 form.onsubmit = async event => {
   event.preventDefault();
   const data = new FormData(form), category = data.get('category');
-  const product = { price: data.get('price') === '' ? null : Number(data.get('price')), sku: data.get('sku'), name: data.get('name'), collection: data.get('collection'), category, url: data.get('url'), sizes: data.get('sizes').split(',').map(s => s.trim()).filter(Boolean), inseams: ['Pants','Sets'].includes(category) ? data.get('inseams').split(',').map(s=>s.trim()).filter(Boolean) : [], colors: data.getAll('colors'), allowances: category === 'Tops' ? data.getAll('topAllowance') : [category], active: form.elements.active.checked, matchAnyCollection: form.elements.matchAnyCollection.checked, imageUrl: data.get('imageUrl'), images: { Black: data.get('blackImage'), Navy: data.get('navyImage'), White: data.get('whiteImage') } };
+  const product = { gender: data.get('gender'), price: data.get('price') === '' ? null : Number(data.get('price')), sku: data.get('sku'), name: data.get('name'), collection: data.get('collection'), category, url: data.get('url'), sizes: data.get('sizes').split(',').map(s => s.trim()).filter(Boolean), inseams: ['Pants','Sets'].includes(category) ? data.get('inseams').split(',').map(s=>s.trim()).filter(Boolean) : [], colors: data.getAll('colors'), allowances: category === 'Tops' ? data.getAll('topAllowance') : [category], active: form.elements.active.checked, matchAnyCollection: form.elements.matchAnyCollection.checked, imageUrl: data.get('imageUrl'), images: { Black: data.get('blackImage'), Navy: data.get('navyImage'), White: data.get('whiteImage') } };
   $('#save-style').disabled = true; $('#catalog-status').textContent = 'Saving…';
   try {
     const saved = await api('/api/admin/catalog' + (editId ? '/' + encodeURIComponent(editId) : ''), { method: editId ? 'PUT' : 'POST', body: JSON.stringify(product) });

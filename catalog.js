@@ -7,7 +7,7 @@ const ah = 'https://allheart.com/products/';
 // Length variants listed on the supplied supplier pages.
 const inseams = {CK115:['Petite','Regular'],CK105:['Petite','Regular','Tall'],CK096:['Petite','Regular','Tall'],CK272:['Petite','Regular','Tall'],CK00034:['Petite','Regular','Tall'],'UNISEX-SET':['Short','Regular','Tall']};
 const style = (id, name, collection, category, url, options = {}) => ({
-  id, sku: id, name, collection, category, url,
+  id, sku: id, name, collection, category, url, gender: 'Women',
   colors: ['Black', 'Navy'], sizes: [...sizes], inseams: inseams[id] || [],
   price: supplierPrices[id] ?? null, allowances: [category], active: true, matchAnyCollection: false, images: supplierImages[id] || {}, imageUrl: supplierImages[id]?.default || supplierImages[id]?.Black || '', ...options
 });
@@ -22,9 +22,16 @@ export const catalog = [
   style('CK954', 'Tuck-in V-neck scrub top', 'Cherokee Workwear Originals Ultra', 'Tops', ua+'cherokee-workwear-originals-ultra-women-s-1-pocket-tuck-in-v-neck-scrub-top/CK954.html'),
   style('CK00034', 'Mid-rise knit jogger scrub pants', 'Cherokee Workwear Originals Ultra', 'Pants', ah+'womens-5-pocket-mid-rise-knit-jogger-scrub-pant-ckck0034?variant=47561612263580'),
   style('CK962A', 'Two-pocket long-sleeve scrub top', 'Cherokee Workwear Originals Ultra', 'Tops', ah+'womens-2-pocket-long-sleeve-scrub-top-ckck962a', {allowances: ['Tops', 'Long sleeves']}),
-  style('UNISEX-SET', 'Unisex V-neck top & cargo pant set', 'Cherokee Workwear Originals Ultra', 'Sets', ah+'unisex-scrub-set-v-neck-1-pocket-scrub-top-drawstring-2-pocket-cargo-scrub-pant'),
+  style('UNISEX-SET', 'Unisex V-neck top & cargo pant set', 'Cherokee Workwear Originals Ultra', 'Sets', ah+'unisex-scrub-set-v-neck-1-pocket-scrub-top-drawstring-2-pocket-cargo-scrub-pant', {gender: 'Unisex'}),
   style('CK4881CL', 'Long-sleeve knit underscrub', 'Cherokee underscrubs', 'Tops', ah+'womens-long-sleeve-knit-underscrub-ck4881cl', {allowances: ['Tops', 'Long sleeves'], matchAnyCollection: true}),
   style('CK773', 'Long-sleeve underscrub knit tee', 'Cherokee underscrubs', 'Tops', ah+'womens-long-sleeve-underscrub-knit-tee-ckck773', {colors: ['Black', 'Navy', 'White'], allowances: ['Tops', 'Long sleeves'], matchAnyCollection: true}),
-  style('CK4350', 'Three-pocket snap-front scrub jacket', 'Cherokee Workwear', 'Jackets', ua+'cherokee-workwear-womens-3-pocket-snap-front-scrub-jacket/CK4350.html'),
-  style('CK00013', 'Crew-neck zip-front scrub jacket', 'Cherokee Workwear Originals Ultra', 'Jackets', ua+'cherokee-workwear-originals-ultra-women-s-2-pocket-crew-neck-zip-front-scrub-jacket/CK00013.html')
+  style('CK00013', 'Crew-neck zip-front scrub jacket', 'Cherokee Workwear Originals Ultra', 'Jackets', ua+'cherokee-workwear-originals-ultra-women-s-2-pocket-crew-neck-zip-front-scrub-jacket/CK00013.html'),
+  style("CK310", "Snap-front scrub jacket", "Cherokee Workwear Revolution", "Jackets", "https://www.uniformadvantage.com/cherokee-workwear-revolution-womens-3-pocket-snap-front-scrub-jacket/CK310.html", {"gender": "Women", "sizes": ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]}),
+  style("CK657", "V-neck tuck-in scrub top", "Cherokee Workwear Revolution", "Tops", "https://www.uniformadvantage.com/cherokee-workwear-revolution-womens-1-pocket-v-neck-tuck-in-scrub-top/CK657.html", {"gender": "Women", "sizes": ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]}),
+  style("CK610", "Mock-wrap scrub top", "Cherokee Workwear Revolution", "Tops", "https://www.uniformadvantage.com/cherokee-workwear-revolution-womens-2-pocket-mock-wrap-scrub-top/CK610.html", {"gender": "Women", "sizes": ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]}),
+  style("CK00027", "Full-zip collar scrub top", "Cherokee Workwear Originals Ultra", "Tops", "https://www.uniformadvantage.com/cherokee-workwear-originals-ultra-men-s-3-pocket-full-zip-front-collar-scrub-top/CK00027.html", {"gender": "Men", "sizes": ["S", "M", "L", "XL", "2XL", "3XL"]}),
+  style("CK278", "Flat-front cargo jogger scrub pants", "Cherokee Workwear Originals Ultra", "Pants", "https://www.uniformadvantage.com/cherokee-workwear-originals-ultra-men-s-4-pocket-flat-front-cargo-jogger-scrub-pants/CK278.html", {"gender": "Men", "sizes": ["S", "M", "L", "XL", "2XL", "3XL"], "inseams": ["Regular"]}),
+  style("CK279", "Straight-leg drawstring cargo scrub pants", "Cherokee Workwear Originals Ultra", "Pants", "https://www.uniformadvantage.com/cherokee-workwear-originals-ultra-men-s-6-pocket-straight-leg-drawstring-cargo-scrub-pants/CK279.html", {"gender": "Men", "sizes": ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "6XL"], "inseams": ["Regular"]}),
+  style("CK783", "Three-pocket V-neck scrub top", "Cherokee Workwear Originals Ultra", "Tops", "https://www.uniformadvantage.com/cherokee-workwear-originals-ultra-men-s-3-pocket-v-neck-scrub-top/CK783.html", {"gender": "Men", "sizes": ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "6XL"]}),
+  style("CK4777", "Unisex one-pocket V-neck scrub top", "Cherokee Workwear Originals", "Tops", "https://www.uniformadvantage.com/cherokee-workwear-unisex-1-pocket-v-neck-scrub-top/CK4777.html", {"gender": "Unisex", "sizes": ["XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]})
 ];
