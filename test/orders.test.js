@@ -23,9 +23,9 @@ async function withServer(run) {
 const post = (base, payload) => fetch(base + '/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
 test('all supplied styles are included once with their approved colors', () => {
-  assert.equal(catalog.length, 25);
-  assert.equal(new Set(catalog.map(p => p.id)).size, 25);
-  assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773']);
+  assert.equal(catalog.length, 26);
+  assert.equal(new Set(catalog.map(p => p.id)).size, 26);
+  assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773', 'CK807']);
   assert.equal(catalog.filter(p => p.category === 'Sets').length, 1);
   assert.equal(catalog.filter(p => p.category === 'Jackets').length, 2);
   assert.ok(catalog.every(p => p.imageUrl.startsWith('https://')));
@@ -35,6 +35,8 @@ test('all supplied styles are included once with their approved colors', () => {
 
 test('required five sets reject incomplete, excess, duplicate, and invalid selections', () => {
   assert.ok(validateOrder({ employee, items }).id);
+  assert.throws(()=>validateOrder({employee,items:[...items,item('CK807','Navy',1,{allowance:'Long sleeves'})]}),/approved style/);
+  assert.ok(validateOrder({employee,items:[...items,item('CK807','Black',1,{allowance:'Long sleeves'})]}).id);
   for (let index = 0; index < items.length; index++) {
     for (const change of [-1, 1]) {
       const copy = structuredClone(items); copy[index].quantity += change;
@@ -49,12 +51,14 @@ test('required five sets reject incomplete, excess, duplicate, and invalid selec
 });
 
 test('white underscrubs count toward either set color, never twice or toward extras', () => {
-  const whiteItems = [item('CK773', 'White', 3, { setColor: 'Black' }), item('CK773', 'White', 2, { setColor: 'Navy' }), items[2], items[3]];
+  for (const id of ['CK773','CK807']) {
+  const whiteItems = [item(id, 'White', 3, { setColor: 'Black' }), item(id, 'White', 2, { setColor: 'Navy' }), items[2], items[3]];
   const order = validateOrder({ employee, items: whiteItems });
   assert.deepEqual(order.items.slice(0, 2).map(i => i.setColor), ['Black', 'Navy']);
-  assert.throws(() => validateOrder({ employee, items: [item('CK773', 'White', 3), ...items.slice(1)] }), /Assign white/);
-  assert.throws(() => validateOrder({ employee, items: [...items, item('CK773', 'White', 1, { setColor: 'Black', allowance: 'Long sleeves' })] }), /five sets only/);
+  assert.throws(() => validateOrder({ employee, items: [item(id, 'White', 3), ...items.slice(1)] }), /Assign white/);
+  assert.throws(() => validateOrder({ employee, items: [...items, item(id, 'White', 1, { setColor: 'Black', allowance: 'Long sleeves' })] }), /five sets only/);
   assert.throws(() => validateOrder({ employee, items: [item('CK00038', 'White', 3, { setColor: 'Black' }), ...items.slice(1)] }), /approved style/);
+  }
 });
 
 test('complete sets supply both pieces; long sleeves and jackets are separate optional allowances', () => {
@@ -205,7 +209,7 @@ test('orders need no department and capture catalog values rather than client pr
 });
 
 test('new approved styles migrate into saved catalogs and the removed jacket cannot be ordered', async () => {
-  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033'];
+  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033','CK807'];
   const old = structuredClone(catalog).filter(p=>!newIds.includes(p.id));
   old.forEach(p=>delete p.gender);
   old.push({...catalog.find(p=>p.id==='CK310'),id:'CK4350',sku:'CK4350'});
@@ -215,11 +219,11 @@ test('new approved styles migrate into saved catalogs and the removed jacket can
   const base = 'http://127.0.0.1:'+server.address().port;
   try {
     const products = await (await fetch(base+'/api/catalog')).json();
-    assert.equal(products.length,25);
+    assert.equal(products.length,26);
     assert.equal(products[0].name,'Administrator title');
     assert.equal(products[0].gender,'Women');
     assert.ok(!products.some(p=>p.id==='CK4350'));
-    assert.equal(products.filter(p=>p.gender==='Men').length,4);
+    assert.equal(products.filter(p=>p.gender==='Men').length,5);
     assert.equal(products.filter(p=>p.gender==='Unisex').length,1);
     assert.equal(products.filter(p=>p.id==='CK00038').length,1);
     old.push({...catalog[0],id:'CK4777',sku:'CK4777',gender:'Men',name:'One-pocket V-neck scrub top'});

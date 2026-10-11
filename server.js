@@ -108,7 +108,7 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
   const { loadCatalog: readCatalog, saveCatalog, saveOrder, loadOrders } = store;
   async function loadCatalog() {
     const saved = await readCatalog();
-    const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033'];
+    const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033','CK807'];
     const additions = catalog.filter(p => newIds.includes(p.id) && !saved.some(s => s.id === p.id));
     return [...saved, ...additions].filter(p => !['CK4350','CK4777'].includes(p.id)).map(product => {
       const initial = catalog.find(p => p.id === product.id);
