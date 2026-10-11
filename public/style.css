@@ -10,3 +10,5 @@
 .retail-price { font-weight: 700; color: #082a61; }
 
 .fit-heading { margin-top: 42px; padding-bottom: 12px; border-bottom: 2px solid #00a7eb; color: #082a61; }
+
+.ownership-note { max-width: 1200px; margin: 0 auto; padding: 0 24px 24px; font-size: .875rem; color: #53677f; text-align: center; line-height: 1.6; }
