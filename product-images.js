@@ -33,9 +33,9 @@ export const supplierImages = {
     "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dweac5eec7/CK954/CK954_042826_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
   },
   "CK00034": {
-    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwe4213ad4/CK00034/CK00034_120925_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
-    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw57610f65/CK00034/CK00034_120925_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
-  },
+    "Black": "https://allheart.com/cdn/shop/files/01_ck-ck0034-blk_650.jpg?v=1788913407",
+    "Navy": "https://allheart.com/cdn/shop/files/01_ck-ck0034-nav_650.jpg?v=1788913411"
+},
   "CK4350": {
     "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw71ca47ec/CK4350/CK4350_091126_BLACK_1_S_HV.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
     "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw8794e421/CK4350/CK4350_091126_NAVY_1_S_HV.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"

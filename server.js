@@ -37,6 +37,8 @@ export function validateProduct(input, id) {
   if (product.allowances.includes('Long sleeves') && !product.colors.some(c => c === 'Black' || c === 'Navy')) throw Error('Additional long sleeves need an approved black or navy color.');
   if (typeof input.active !== 'boolean') throw Error('Choose whether the style is active.');
   product.active = input.active;
+  if (input.price !== undefined && input.price !== null && (typeof input.price !== 'number' || !Number.isFinite(input.price) || input.price < 0 || input.price > 10000 || Math.abs(input.price * 100 - Math.round(input.price * 100)) > 0.000001)) throw Error('Enter a valid retail price in dollars.');
+  product.price = input.price ?? null;
   if (input.matchAnyCollection !== undefined && typeof input.matchAnyCollection !== 'boolean') throw Error('Choose whether this is a mix-and-match underscrub.');
   product.matchAnyCollection = Boolean(input.matchAnyCollection);
   if (product.matchAnyCollection && (product.category !== 'Tops' || !product.allowances.includes('Tops'))) throw Error('Only approved scrub tops can match any collection.');
@@ -61,8 +63,8 @@ export function validateProduct(input, id) {
 export function validateOrder(input, products = catalog) {
   if (!input || typeof input !== 'object') throw Error('Invalid order.');
   const employee = {};
-  for (const field of ['name', 'email', 'department']) {
-    if (typeof input.employee?.[field] !== 'string' || !input.employee[field].trim() || input.employee[field].length > 150) throw Error('Enter your name, email, and department.');
+  for (const field of ['name', 'email']) {
+    if (typeof input.employee?.[field] !== 'string' || !input.employee[field].trim() || input.employee[field].length > 150) throw Error('Enter your name and email.');
     employee[field] = input.employee[field].trim();
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(employee.email)) throw Error('Enter a valid email address.');
@@ -80,13 +82,13 @@ export function validateOrder(input, products = catalog) {
     if (item.color === 'White') {
       if (allowance !== 'Tops') throw Error('White tops count toward the five sets only. Additional long sleeves must be black or navy.');
     } else if (setColor !== item.color) throw Error('The allowance color must match the garment color.');
-    return { id: product.id, sku: product.sku, name: product.name, collection: product.collection, url: product.url, category: product.category, color: item.color, setColor, allowance, size: item.size, ...(needsInseam ? { inseam: item.inseam } : {}), quantity: item.quantity, matchAnyCollection: product.matchAnyCollection };
+    return { id: product.id, sku: product.sku, name: product.name, collection: product.collection, url: product.url, category: product.category, color: item.color, setColor, allowance, size: item.size, ...(needsInseam ? { inseam: item.inseam } : {}), quantity: item.quantity, unitPrice: product.price ?? null, lineValue: product.price == null ? null : Math.round(product.price * 100) * item.quantity / 100, matchAnyCollection: product.matchAnyCollection };
   });
   const error = allowanceError(allowanceCounts(items, products));
   if (error) throw Error(error);
   const mismatch = collectionError(items, products);
   if (mismatch) throw Error(mismatch);
-  return { id: randomUUID(), createdAt: new Date().toISOString(), status: 'Submitted', employee, items, sets: { Black: 3, Navy: 2 } };
+  return { id: randomUUID(), createdAt: new Date().toISOString(), status: 'Submitted', employee, items, estimatedValue: items.every(i => i.lineValue !== null) ? items.reduce((sum,i)=>sum+Math.round(i.lineValue*100),0)/100 : null, sets: { Black: 3, Navy: 2 } };
 }
 
 async function jsonBody(req) {
@@ -106,10 +108,13 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
     return (await readCatalog()).map(product => {
       const initial = catalog.find(p => p.id === product.id);
       // Upgrade older saved catalogs without replacing administrator changes.
-      const result = { ...product, inseams: product.inseams ?? initial?.inseams ?? (['Pants', 'Sets'].includes(product.category) ? ['Regular'] : []), matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
+      const result = { ...product, price: product.price === undefined ? initial?.price ?? null : product.price, inseams: product.inseams ?? initial?.inseams ?? (['Pants', 'Sets'].includes(product.category) ? ['Regular'] : []), matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
       if (product.id === 'CK962A' && product.collection === 'Cherokee' || product.id === 'UNISEX-SET' && product.collection === 'AllHeart') result.collection = initial.collection;
       if (product.id === 'CK096' && product.url?.startsWith('https://www.uniformadvantage.com/cherokee-achieve-women-s-5-pocket-stretch-elastic-waist-drawstring-straight-leg-cargo-scrub-pants/CK096.html')) {
         for (const field of ['name', 'url', 'images', 'imageUrl', 'inseams']) result[field] = initial[field];
+      }
+      if (product.id === 'CK00034' && product.url?.startsWith('https://www.uniformadvantage.com/cherokee-workwear-originals-ultra-women-s-5-pocket-drawstring-jogger-scrub-pants/CK00034.html')) {
+        for (const field of ['name', 'url', 'images', 'imageUrl', 'inseams', 'price']) result[field] = initial[field];
       }
       return result;
     });

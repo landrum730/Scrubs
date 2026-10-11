@@ -139,6 +139,7 @@ test('older saved catalogs receive photos and collection corrections without ove
   old.find(p => p.id === 'CK962A').collection = 'Cherokee';
   old.find(p => p.id === 'UNISEX-SET').collection = 'AllHeart';
   Object.assign(old.find(p => p.id === 'CK096'), { url: 'https://www.uniformadvantage.com/cherokee-achieve-women-s-5-pocket-stretch-elastic-waist-drawstring-straight-leg-cargo-scrub-pants/CK096.html', name: 'Old pants', images: { Black: 'https://example.com/old.jpg' }, inseams: ['Regular'], sizes: ['M'] });
+  Object.assign(old.find(p => p.id === 'CK00034'), {url: 'https://www.uniformadvantage.com/cherokee-workwear-originals-ultra-women-s-5-pocket-drawstring-jogger-scrub-pants/CK00034.html', images: {Black:'https://example.com/old-jogger.jpg'}, inseams:['Regular'], price:20});
   old[0].collection = 'Administrator customized collection';
   old[0].imageUrl = 'https://example.com/custom-photo.jpg';
   let saved;
@@ -154,6 +155,11 @@ test('older saved catalogs receive photos and collection corrections without ove
     assert.equal(products.find(p => p.id === 'CK962A').collection, 'Cherokee Workwear Originals Ultra');
     assert.equal(products.find(p => p.id === 'CK773').matchAnyCollection, true);
     assert.ok(products.every(p => Object.keys(p.images).length));
+    const jogger = products.find(p=>p.id==='CK00034');
+    assert.match(jogger.url, /allheart.com.*ckck0034/);
+    assert.match(jogger.images.Black, /ck-ck0034-blk/);
+    assert.deepEqual(jogger.inseams,['Petite','Regular','Tall']);
+    assert.equal(jogger.price,25);
     const replacement = products.find(p => p.id === 'CK096');
     assert.match(replacement.url, /allheart.com/);
     assert.match(replacement.images.Black, /ck-ck096--blk/);
@@ -181,4 +187,19 @@ test('inseam is required, approved, and retained on pants and complete sets', ()
  assert.throws(()=>validateProduct({...product,inseams:[]},product.id),/approved inseam/);
  const crossColor=structuredClone(items);crossColor[2].color='Navy';crossColor[3].color='Black';
  assert.throws(()=>validateOrder({employee,items:crossColor}),/allowance|Complete/);
+});
+
+test('orders need no department and capture catalog values rather than client prices', () => {
+  const order = validateOrder({employee: {name: 'Employee', email: 'employee@example.com'}, items: items.map(i=>({...i, unitPrice: 0})), estimatedValue:0});
+  assert.deepEqual(order.employee, {name:'Employee',email:'employee@example.com'});
+  assert.equal(order.estimatedValue, 298.90);
+  assert.equal(order.items[0].unitPrice, 27.99);
+  assert.equal(order.items[0].lineValue, 83.97);
+  const changed = structuredClone(catalog);changed[0].price=30;
+  assert.equal(validateOrder({employee,items},changed).estimatedValue,308.95);
+  changed[0].price=null;
+  assert.equal(validateOrder({employee,items},changed).estimatedValue,null);
+  assert.throws(()=>validateProduct({...catalog[0],price:-1},'test'),/retail price/);
+  assert.throws(()=>validateProduct({...catalog[0],price:Infinity},'test'),/retail price/);
+  assert.throws(()=>validateProduct({...catalog[0],price:1.234},'test'),/retail price/);
 });

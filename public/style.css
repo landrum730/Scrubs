@@ -4,3 +4,7 @@
 @media(max-width:360px){.brand img{width:165px}header{padding:16px}.outline{padding:9px}main{padding:0 16px}}
 
 .cart-row label.inseam-choice{width:150px}.product:has([name="inseam"]) .choices{grid-template-columns:1.2fr 1.5fr .8fr}
+
+#cart-value { font-size: 1.5rem; font-weight: 700; color: var(--navy); margin-top: 24px; }
+.value-note { color: #53677f; font-size: .85rem; max-width: 760px; }
+.retail-price { font-weight: 700; color: #082a61; }
