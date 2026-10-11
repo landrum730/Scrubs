@@ -31,7 +31,7 @@ export function localStore(dataDir) {
 export function supabaseStore({ url, key, fetchImpl = fetch }) {
   let parsed;
   try { parsed = new URL(url); } catch { throw Error('Set SUPABASE_URL to your project URL before starting the site.'); }
-  if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.supabase.co') || parsed.username || parsed.password || parsed.port || parsed.pathname !== '/' || parsed.search || parsed.hash) throw Error('SUPABASE_URL must be an HTTPS Supabase project URL.');
+  if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.supabase.co') || parsed.username || parsed.password || parsed.port || !['/', '/rest/v1', '/rest/v1/'].includes(parsed.pathname) || parsed.search || parsed.hash) throw Error('SUPABASE_URL must be your HTTPS Supabase project URL or the API URL copied from Data API.');
   if (!key) throw Error('Set SUPABASE_SERVICE_ROLE_KEY securely before starting the site.');
   const headers = { apikey: key, 'Content-Type': 'application/json' };
   // Legacy service_role JWTs need a bearer header. New secret keys use apikey only.

@@ -4,6 +4,17 @@ import { supabaseStore } from '../storage.js';
 import { catalog, createServer, validateOrder } from '../server.js';
 const validOrder = () => validateOrder({ employee: { name: 'Test Employee', email: 'test@example.com', department: 'Nursing' }, items: [{ id: 'UNISEX-SET', color: 'Black', size: 'M', quantity: 3 }, { id: 'UNISEX-SET', color: 'Navy', size: 'M', quantity: 2 }] });
 
+test('copied Data API URLs and project URLs use the same REST endpoint', async () => {
+  for (const suffix of ['', '/', '/rest/v1', '/rest/v1/']) {
+    const store = supabaseStore({ url: 'https://test-project.supabase.co' + suffix, key: 'test', fetchImpl: async address => {
+      assert.equal(address, 'https://test-project.supabase.co/rest/v1/scrubs_catalog?id=eq.approved&select=payload');
+      return Response.json([]);
+    } });
+    assert.equal((await store.loadCatalog()).length, 15);
+  }
+  for (const suffix of ['/rest/v1/orders', '/dashboard', '/?key=test']) assert.throws(() => supabaseStore({ url: 'https://test-project.supabase.co' + suffix, key: 'test' }), /SUPABASE_URL/);
+});
+
 test('Supabase storage preserves catalog and orders across adapter restarts with server-only authentication', async () => {
   const rows = new Map();
   const calls = [];

@@ -44,7 +44,7 @@ Email notifications still require the administrator destination and email delive
 1. Sign up at https://supabase.com using GitHub.
 2. Create a project in a **Free** organization. Set a database password securely; this application does not need that password.
 3. In the project's **SQL Editor**, paste the contents of `supabase.sql` from this repository and run it. This creates two private tables with row-level security and no public access.
-4. Copy the project's HTTPS URL and its server-only secret key (or legacy `service_role` key) from project settings / API keys. Do not use the public publishable or `anon` key. Never send the secret key in chat or commit it.
+4. Copy the project's HTTPS URL (or the full API URL from **Data API**, including `/rest/v1/`) and its server-only secret key (or legacy `service_role` key) from project settings / API keys. Either URL format is accepted. Do not use the public publishable or `anon` key. Never send the secret key in chat or commit it.
 
 ### 2. Host the site for free
 
