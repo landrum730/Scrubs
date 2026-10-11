@@ -90,5 +90,21 @@ export const supplierImages = {
   "CK4777": {
     "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwc4b8b2e4/CK4777/CK4777_021826_BLACK_1.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
     "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw77e86f25/CK4777/CK4777_021826_NAVY_1.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK963": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw63645bbd/CK963/CK963_021926_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw4529f985/CK963/CK963_021926_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK863": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw9b869068/CK863/CK863_032326_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw55e044bb/CK863/CK863_032326_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK832": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwf333eccc/CK832/CK832_021026_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw5b14a7ef/CK832/CK832_021026_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
+},
+  "CK033": {
+    "Black": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dw2376f99c/CK033/CK033_021026_BLACK_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80",
+    "Navy": "https://www.uniformadvantage.com/dw/image/v2/BGPS_PRD/on/demandware.static/-/Sites-UAMasterCatalog/default/dwf77d0ffb/CK033/CK033_021026_NAVY_1_S.webp?sw=600&sh=890&sm=fit&sfrm=jpg&q=80"
 }
 };

@@ -23,8 +23,8 @@ async function withServer(run) {
 const post = (base, payload) => fetch(base + '/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
 test('all supplied styles are included once with their approved colors', () => {
-  assert.equal(catalog.length, 21);
-  assert.equal(new Set(catalog.map(p => p.id)).size, 21);
+  assert.equal(catalog.length, 25);
+  assert.equal(new Set(catalog.map(p => p.id)).size, 25);
   assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773']);
   assert.equal(catalog.filter(p => p.category === 'Sets').length, 1);
   assert.equal(catalog.filter(p => p.category === 'Jackets').length, 2);
@@ -205,7 +205,7 @@ test('orders need no department and capture catalog values rather than client pr
 });
 
 test('new approved styles migrate into saved catalogs and the removed jacket cannot be ordered', async () => {
-  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783'];
+  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033'];
   const old = structuredClone(catalog).filter(p=>!newIds.includes(p.id));
   old.forEach(p=>delete p.gender);
   old.push({...catalog.find(p=>p.id==='CK310'),id:'CK4350',sku:'CK4350'});
@@ -215,7 +215,7 @@ test('new approved styles migrate into saved catalogs and the removed jacket can
   const base = 'http://127.0.0.1:'+server.address().port;
   try {
     const products = await (await fetch(base+'/api/catalog')).json();
-    assert.equal(products.length,21);
+    assert.equal(products.length,25);
     assert.equal(products[0].name,'Administrator title');
     assert.equal(products[0].gender,'Women');
     assert.ok(!products.some(p=>p.id==='CK4350'));
@@ -228,6 +228,9 @@ test('new approved styles migrate into saved catalogs and the removed jacket can
     assert.ok(!adminProducts.some(p=>p.id==='CK4777'));
     assert.equal(adminProducts.filter(p=>p.id==='CK657').length,1);
     assert.equal(adminProducts.find(p=>p.id==='CK657').active,false);
+    const achieve = [item('CK963','Black',1),item('CK863','Black',1),item('CK832','Black',1),item('CK033','Black',3,{inseam:'Petite'}),item('CK936','Navy',2),item('CK096','Navy',2)];
+    assert.equal(validateOrder({employee,items:achieve}).items.length,6);
+    assert.equal(products.filter(p=>p.collection==='Cherokee Achieve').length,6);
     const mens=[item('CK00027','Black',3),item('CK278','Black',3),item('CK783','Navy',2),item('CK279','Navy',2)];
     assert.equal(validateOrder({employee,items:mens}).items.length,4);
     assert.throws(()=>validateOrder({employee,items:[...items,{id:'CK4350',size:'M',color:'Black',quantity:1}]}),/approved style/);
