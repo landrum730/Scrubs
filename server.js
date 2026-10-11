@@ -108,9 +108,9 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
   const { loadCatalog: readCatalog, saveCatalog, saveOrder, loadOrders } = store;
   async function loadCatalog() {
     const saved = await readCatalog();
-    const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK4777'];
+    const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783'];
     const additions = catalog.filter(p => newIds.includes(p.id) && !saved.some(s => s.id === p.id));
-    return [...saved, ...additions].filter(p => p.id !== 'CK4350').map(product => {
+    return [...saved, ...additions].filter(p => !['CK4350','CK4777'].includes(p.id)).map(product => {
       const initial = catalog.find(p => p.id === product.id);
       // Upgrade older saved catalogs without replacing administrator changes.
       const result = { ...product, gender: product.gender ?? initial?.gender ?? 'Unisex', price: product.price === undefined ? initial?.price ?? null : product.price, inseams: product.inseams ?? initial?.inseams ?? (['Pants', 'Sets'].includes(product.category) ? ['Regular'] : []), matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
@@ -120,10 +120,6 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
       }
       if (product.id === 'CK00034' && product.url?.startsWith('https://www.uniformadvantage.com/cherokee-workwear-originals-ultra-women-s-5-pocket-drawstring-jogger-scrub-pants/CK00034.html')) {
         for (const field of ['name', 'url', 'images', 'imageUrl', 'inseams', 'price']) result[field] = initial[field];
-      }
-      if (product.id === 'CK4777') {
-        result.gender = 'Men';
-        if (result.name === 'Unisex one-pocket V-neck scrub top') result.name = initial.name;
       }
       return result;
     });

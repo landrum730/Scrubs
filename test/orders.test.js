@@ -23,8 +23,8 @@ async function withServer(run) {
 const post = (base, payload) => fetch(base + '/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
 test('all supplied styles are included once with their approved colors', () => {
-  assert.equal(catalog.length, 22);
-  assert.equal(new Set(catalog.map(p => p.id)).size, 22);
+  assert.equal(catalog.length, 21);
+  assert.equal(new Set(catalog.map(p => p.id)).size, 21);
   assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773']);
   assert.equal(catalog.filter(p => p.category === 'Sets').length, 1);
   assert.equal(catalog.filter(p => p.category === 'Jackets').length, 2);
@@ -205,7 +205,7 @@ test('orders need no department and capture catalog values rather than client pr
 });
 
 test('new approved styles migrate into saved catalogs and the removed jacket cannot be ordered', async () => {
-  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK4777'];
+  const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783'];
   const old = structuredClone(catalog).filter(p=>!newIds.includes(p.id));
   old.forEach(p=>delete p.gender);
   old.push({...catalog.find(p=>p.id==='CK310'),id:'CK4350',sku:'CK4350'});
@@ -215,18 +215,17 @@ test('new approved styles migrate into saved catalogs and the removed jacket can
   const base = 'http://127.0.0.1:'+server.address().port;
   try {
     const products = await (await fetch(base+'/api/catalog')).json();
-    assert.equal(products.length,22);
+    assert.equal(products.length,21);
     assert.equal(products[0].name,'Administrator title');
     assert.equal(products[0].gender,'Women');
     assert.ok(!products.some(p=>p.id==='CK4350'));
-    assert.equal(products.filter(p=>p.gender==='Men').length,5);
+    assert.equal(products.filter(p=>p.gender==='Men').length,4);
     assert.equal(products.filter(p=>p.gender==='Unisex').length,1);
     assert.equal(products.filter(p=>p.id==='CK00038').length,1);
-    old.push({...catalog.find(p=>p.id==='CK4777'),gender:'Unisex',name:'Unisex one-pocket V-neck scrub top'});
+    old.push({...catalog[0],id:'CK4777',sku:'CK4777',gender:'Men',name:'One-pocket V-neck scrub top'});
     old.push({...catalog.find(p=>p.id==='CK657'),active:false});
     const adminProducts=await (await fetch(base+'/api/admin/catalog',{headers:auth})).json();
-    assert.equal(adminProducts.find(p=>p.id==='CK4777').gender,'Men');
-    assert.equal(adminProducts.find(p=>p.id==='CK4777').name,'One-pocket V-neck scrub top');
+    assert.ok(!adminProducts.some(p=>p.id==='CK4777'));
     assert.equal(adminProducts.filter(p=>p.id==='CK657').length,1);
     assert.equal(adminProducts.find(p=>p.id==='CK657').active,false);
     const mens=[item('CK00027','Black',3),item('CK278','Black',3),item('CK783','Navy',2),item('CK279','Navy',2)];
