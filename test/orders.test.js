@@ -1,0 +1,112 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { createServer, validateOrder, catalog, validateProduct } from '../server.js';
+const employee = { name: 'Test Employee', email: 'employee@example.com', department: 'Nursing' };
+const item = (id, color, quantity, extra = {}) => ({ id, color, size: 'M', quantity, ...extra });
+const items = [item('CK00038', 'Black', 3), item('CK00038', 'Navy', 2), item('CK115', 'Black', 3), item('CK105', 'Navy', 2)];
+const auth = { Authorization: 'Bearer test-only-token', 'Content-Type': 'application/json' };
+async function withServer(run) {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'scrubs-test-'));
+  let server;
+  const start = async () => {
+    server = createServer({ dataDir: dir, adminToken: 'test-only-token', storage: 'local' });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    return 'http://127.0.0.1:' + server.address().port;
+  };
+  const restart = async () => { await new Promise(resolve => server.close(resolve)); return start(); };
+  try { await run(await start(), restart); }
+  finally { await new Promise(resolve => server.close(resolve)); await rm(dir, { recursive: true, force: true }); }
+}
+const post = (base, payload) => fetch(base + '/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+test('all supplied styles are included once with their approved colors', () => {
+  assert.equal(catalog.length, 15);
+  assert.equal(new Set(catalog.map(p => p.id)).size, 15);
+  assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773']);
+  assert.equal(catalog.filter(p => p.category === 'Sets').length, 1);
+  assert.equal(catalog.filter(p => p.category === 'Jackets').length, 2);
+});
+
+test('required five sets reject incomplete, excess, duplicate, and invalid selections', () => {
+  assert.ok(validateOrder({ employee, items }).id);
+  for (let index = 0; index < items.length; index++) {
+    for (const change of [-1, 1]) {
+      const copy = structuredClone(items); copy[index].quantity += change;
+      assert.throws(() => validateOrder({ employee, items: copy }));
+    }
+  }
+  assert.throws(() => validateOrder({ employee, items: [...items, items[0]] }));
+  assert.throws(() => validateOrder({ employee, items: [null] }), /approved style/);
+  assert.throws(() => validateOrder({ employee, items: items.map(i => ({ ...i, color: 'Royal' })) }), /approved style/);
+  assert.throws(() => validateOrder({ employee, items: items.map(i => ({ ...i, size: 'Unapproved' })) }), /approved style/);
+  assert.throws(() => validateOrder({ employee, items: items.map(i => ({ ...i, setColor: i.color === 'Black' ? 'Navy' : 'Black' })) }), /must match/);
+});
+
+test('white underscrubs count toward either set color, never twice or toward extras', () => {
+  const whiteItems = [item('CK773', 'White', 3, { setColor: 'Black' }), item('CK773', 'White', 2, { setColor: 'Navy' }), items[2], items[3]];
+  const order = validateOrder({ employee, items: whiteItems });
+  assert.deepEqual(order.items.slice(0, 2).map(i => i.setColor), ['Black', 'Navy']);
+  assert.throws(() => validateOrder({ employee, items: [item('CK773', 'White', 3), ...items.slice(1)] }), /Assign white/);
+  assert.throws(() => validateOrder({ employee, items: [...items, item('CK773', 'White', 1, { setColor: 'Black', allowance: 'Long sleeves' })] }), /five sets only/);
+  assert.throws(() => validateOrder({ employee, items: [item('CK00038', 'White', 3, { setColor: 'Black' }), ...items.slice(1)] }), /approved style/);
+});
+
+test('complete sets supply both pieces; long sleeves and jackets are separate optional allowances', () => {
+  assert.ok(validateOrder({ employee, items: [item('UNISEX-SET', 'Black', 3), item('UNISEX-SET', 'Navy', 2)] }).id);
+  assert.ok(validateOrder({ employee, items: [item('UNISEX-SET', 'Black', 2), item('CK953', 'Black', 1), item('CK272', 'Black', 1), item('UNISEX-SET', 'Navy', 2)] }).id);
+  const extras = [item('CK962A', 'Black', 1, { allowance: 'Long sleeves' }), item('CK4881CL', 'Navy', 1, { allowance: 'Long sleeves' }), item('CK4350', 'Black', 1), item('CK00013', 'Navy', 1)];
+  assert.equal(validateOrder({ employee, items: [...items, ...extras] }).items.length, 8);
+  for (const extra of extras) assert.throws(() => validateOrder({ employee, items: [...items, ...extras, extra] }), /at most 1/);
+  assert.throws(() => validateOrder({ employee, items: [...items, item('CK00038', 'Black', 1, { allowance: 'Long sleeves' })] }), /not approved/);
+  assert.throws(() => validateOrder({ employee, items: [...extras, items[2], items[3]] }), /Complete/);
+});
+
+test('orders persist with original style details and administrator access is protected', async () => withServer(async (base, restart) => {
+  assert.equal((await fetch(base + '/')).status, 200);
+  assert.equal((await fetch(base + '/policy.js')).status, 200);
+  const response = await post(base, { employee, items }); assert.equal(response.status, 201);
+  const { id } = await response.json(); assert.ok(id);
+  assert.equal((await fetch(base + '/api/admin/orders')).status, 401);
+  const invalid = await post(base, { employee, items: [...items, items[0]] }); assert.equal(invalid.status, 400);
+  base = await restart();
+  const stored = await (await fetch(base + '/api/admin/orders', { headers: auth })).json();
+  assert.equal(stored.length, 1); assert.equal(stored[0].id, id); assert.equal(stored[0].items[0].sku, 'CK00038');
+  assert.deepEqual(stored[0].sets, { Black: 3, Navy: 2 });
+}));
+
+test('administrator can add, edit, and retire styles; changes persist and orders use current approvals', async () => withServer(async (base, restart) => {
+  const newStyle = { ...structuredClone(catalog[0]), sku: 'NEW-TOP', name: 'New approved top', sizes: ['M', 'L'], url: 'https://example.com/scrub-top' };
+  assert.equal((await fetch(base + '/api/admin/catalog', { method: 'POST', body: JSON.stringify(newStyle) })).status, 401);
+  assert.equal((await fetch(base + '/api/admin/catalog')).status, 401);
+  const add = await fetch(base + '/api/admin/catalog', { method: 'POST', headers: auth, body: JSON.stringify(newStyle) }); assert.equal(add.status, 201);
+  const saved = await add.json(); assert.ok(saved.id);
+  assert.equal((await fetch(base + '/api/admin/catalog', { method: 'POST', headers: auth, body: JSON.stringify(newStyle) })).status, 409);
+  const selected = [{ ...items[0], id: saved.id }, ...items.slice(1)];
+  assert.equal((await post(base, { employee, items: selected })).status, 201);
+  base = await restart();
+  let publicCatalog = await (await fetch(base + '/api/catalog')).json(); assert.equal(publicCatalog.length, 16); assert.ok(publicCatalog.some(p => p.id === saved.id));
+  const edited = { ...saved, name: 'Updated top', sizes: ['L'] };
+  assert.equal((await fetch(base + '/api/admin/catalog/' + saved.id, { method: 'PUT', headers: auth, body: JSON.stringify(edited) })).status, 200);
+  assert.equal((await post(base, { employee, items: selected })).status, 400);
+  selected[0].size = 'L'; assert.equal((await post(base, { employee, items: selected })).status, 201);
+  assert.equal((await fetch(base + '/api/admin/catalog/' + saved.id, { method: 'PUT', headers: auth, body: JSON.stringify({ ...edited, active: false }) })).status, 200);
+  base = await restart();
+  publicCatalog = await (await fetch(base + '/api/catalog')).json(); assert.equal(publicCatalog.length, 15);
+  assert.equal((await post(base, { employee, items: selected })).status, 400);
+  const adminCatalog = await (await fetch(base + '/api/admin/catalog', { headers: auth })).json(); assert.equal(adminCatalog.find(p => p.id === saved.id).active, false);
+  const orders = await (await fetch(base + '/api/admin/orders', { headers: auth })).json();
+  assert.equal(orders.length, 2); assert.equal(orders[1].items[0].name, 'New approved top'); assert.equal(orders[0].items[0].name, 'Updated top');
+}));
+
+test('catalog validation rejects unsafe links and incompatible garment allowances', () => {
+  const product = structuredClone(catalog[0]);
+  for (const url of ['javascript:alert(1)', 'http://example.com', 'https://secret:password@example.com']) assert.throws(() => validateProduct({ ...product, url }, 'new'));
+  assert.throws(() => validateProduct({ ...product, category: 'Pants', colors: ['White'], allowances: ['Pants'] }, 'new'), /White/);
+  assert.throws(() => validateProduct({ ...product, allowances: ['Jackets'] }, 'new'), /supported/);
+  assert.throws(() => validateProduct({ ...product, colors: ['Red'] }, 'new'), /approved colors/);
+  assert.throws(() => validateProduct({ ...product, sizes: [] }, 'new'), /size/);
+  assert.throws(() => validateProduct({ ...product, colors: ['White'], allowances: ['Long sleeves'] }, 'new'), /White requires/);
+});
