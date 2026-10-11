@@ -121,6 +121,10 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
       if (product.id === 'CK00034' && product.url?.startsWith('https://www.uniformadvantage.com/cherokee-workwear-originals-ultra-women-s-5-pocket-drawstring-jogger-scrub-pants/CK00034.html')) {
         for (const field of ['name', 'url', 'images', 'imageUrl', 'inseams', 'price']) result[field] = initial[field];
       }
+      if (product.id === 'CK4777') {
+        result.gender = 'Men';
+        if (result.name === 'Unisex one-pocket V-neck scrub top') result.name = initial.name;
+      }
       return result;
     });
   }

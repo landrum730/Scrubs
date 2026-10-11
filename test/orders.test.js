@@ -219,11 +219,14 @@ test('new approved styles migrate into saved catalogs and the removed jacket can
     assert.equal(products[0].name,'Administrator title');
     assert.equal(products[0].gender,'Women');
     assert.ok(!products.some(p=>p.id==='CK4350'));
-    assert.equal(products.filter(p=>p.gender==='Men').length,4);
-    assert.equal(products.filter(p=>p.gender==='Unisex').length,2);
+    assert.equal(products.filter(p=>p.gender==='Men').length,5);
+    assert.equal(products.filter(p=>p.gender==='Unisex').length,1);
     assert.equal(products.filter(p=>p.id==='CK00038').length,1);
+    old.push({...catalog.find(p=>p.id==='CK4777'),gender:'Unisex',name:'Unisex one-pocket V-neck scrub top'});
     old.push({...catalog.find(p=>p.id==='CK657'),active:false});
     const adminProducts=await (await fetch(base+'/api/admin/catalog',{headers:auth})).json();
+    assert.equal(adminProducts.find(p=>p.id==='CK4777').gender,'Men');
+    assert.equal(adminProducts.find(p=>p.id==='CK4777').name,'One-pocket V-neck scrub top');
     assert.equal(adminProducts.filter(p=>p.id==='CK657').length,1);
     assert.equal(adminProducts.find(p=>p.id==='CK657').active,false);
     const mens=[item('CK00027','Black',3),item('CK278','Black',3),item('CK783','Navy',2),item('CK279','Navy',2)];
