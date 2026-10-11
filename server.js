@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { microsoftEmailNotifier } from './email.js';
 import { readFile } from 'node:fs/promises';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -102,10 +103,10 @@ async function jsonBody(req) {
   try { return JSON.parse(body); } catch { const error = Error('Request must contain valid JSON.'); error.status = 400; throw error; }
 }
 
-export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.resolve('data'), adminToken = process.env.SCRUBS_ADMIN_TOKEN, storage = process.env.SCRUBS_STORAGE || 'local', store } = {}) {
+export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.resolve('data'), adminToken = process.env.SCRUBS_ADMIN_TOKEN, storage = process.env.SCRUBS_STORAGE || 'local', store, notifier = microsoftEmailNotifier() } = {}) {
   if (!['local', 'supabase'].includes(storage)) throw Error('SCRUBS_STORAGE must be local or supabase.');
   store ||= storage === 'supabase' ? supabaseStore({ url: process.env.SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY }) : localStore(dataDir);
-  const { loadCatalog: readCatalog, saveCatalog, saveOrder, loadOrders } = store;
+  const { loadCatalog: readCatalog, saveCatalog, saveOrder, loadOrders, updateOrder } = store;
   async function loadCatalog() {
     const saved = await readCatalog();
     const newIds = ['CK310','CK657','CK610','CK00027','CK278','CK279','CK783','CK963','CK863','CK832','CK033','CK807','LE256591','LE302536'];
@@ -124,6 +125,11 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
       if (product.id === 'CK807') result.displayCollection = initial.displayCollection;
       return result;
     });
+  }
+  async function sendNotification(order) {
+    order.emailNotification = await notifier.send(order);
+    try { await updateOrder(order); } catch { console.warn('Order email status could not be stored.'); }
+    return order.emailNotification.status;
   }
   let mutation = Promise.resolve();
   const mutate = operation => {
@@ -167,10 +173,23 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
           const products = await loadCatalog();
           try { order = validateOrder(input, products); }
           catch (error) { return { error: error.message }; }
+          order.emailNotification = {status:notifier.configured ? 'pending' : 'not_configured', to:notifier.to};
           await saveOrder(order);
-          return { id: order.id };
+          const emailStatus = notifier.configured ? await sendNotification(order) : 'not_configured';
+          return { id: order.id, emailStatus };
         });
         return send(result.error ? 400 : 201, result);
+      }
+      if (req.method === 'POST' && /^\/api\/admin\/orders\/[^/]+\/email$/.test(url.pathname)) {
+        const id = decodeURIComponent(url.pathname.split('/')[4]);
+        const result = await mutate(async () => {
+          const order = (await loadOrders()).find(o=>o.id===id);
+          if (!order) return {status:404,error:'Order not found.'};
+          if (order.emailNotification?.status === 'sent') return {emailStatus:'sent'};
+          if (!notifier.configured) return {status:503,error:'Email delivery has not been configured yet. Orders remain saved in this workspace.'};
+          return {emailStatus:await sendNotification(order)};
+        });
+        return send(result.status || 200, result);
       }
       if (req.method === 'GET' && url.pathname === '/api/admin/orders') {
         return send(200, await loadOrders());

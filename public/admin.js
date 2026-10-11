@@ -10,7 +10,16 @@ async function api(url, options = {}) {
 }
 async function loadOrders() {
   const orders = await api('/api/admin/orders');
-  $('#orders').innerHTML = orders.length ? orders.map(order => `<article class="admin-order"><h3>${esc(order.employee.name)}</h3><p>${esc(order.employee.email)}</p><p>${esc(new Date(order.createdAt).toLocaleString())} · ${esc(order.status)}</p><ul>${order.items.map(item => `<li>${item.quantity} × ${esc(item.name)} (${esc(item.sku || item.id)}) — ${esc(item.color)}, size ${esc(item.size)}${item.inseam ? ' · Inseam: ' + esc(item.inseam) : ''} · ${esc(item.collection || 'Collection not recorded')}${item.allowance ? ' · ' + esc(item.allowance) : ''}${!['Black','Navy'].includes(item.color) ? ' · counts toward ' + esc(item.setColor) + ' set' : ''}</li>`).join('')}</ul><p>${order.estimatedValue == null ? "" : "Estimated total value: $" + order.estimatedValue.toFixed(2)}</p><p class="reference">${esc(order.id)}</p></article>`).join('') : '<p>No orders submitted yet.</p>';
+  $('#orders').innerHTML = orders.length ? orders.map(order => `<article class="admin-order"><h3>${esc(order.employee.name)}</h3><p>${esc(order.employee.email)}</p><p>${esc(new Date(order.createdAt).toLocaleString())} · ${esc(order.status)}</p><ul>${order.items.map(item => `<li>${item.quantity} × ${esc(item.name)} (${esc(item.sku || item.id)}) — ${esc(item.color)}, size ${esc(item.size)}${item.inseam ? ' · Inseam: ' + esc(item.inseam) : ''} · ${esc(item.collection || 'Collection not recorded')}${item.allowance ? ' · ' + esc(item.allowance) : ''}${!['Black','Navy'].includes(item.color) ? ' · counts toward ' + esc(item.setColor) + ' set' : ''}</li>`).join('')}</ul><p>${order.estimatedValue == null ? "" : "Estimated total value: $" + order.estimatedValue.toFixed(2)}</p><p>Email notification: ${esc(order.emailNotification?.status || 'not sent')}${order.emailNotification?.to ? ' · '+esc(order.emailNotification.to) : ''}</p>${order.emailNotification?.status === 'uncertain' ? '<p>Microsoft may have accepted this email. Check the manager mailbox before retrying.</p>' : ''}${order.emailNotification?.status !== 'sent' ? `<button class="outline" data-email="${esc(order.id)}">Send order email</button>` : ''}<p class="reference">${esc(order.id)}</p></article>`).join('') : '<p>No orders submitted yet.</p>';
+  document.querySelectorAll('[data-email]').forEach(button=>button.onclick=()=>sendOrderEmail(button));
+}
+async function sendOrderEmail(button) {
+  button.disabled = true;
+  try {
+    const result = await api('/api/admin/orders/'+encodeURIComponent(button.dataset.email)+'/email', {method:'POST'});
+    $('#status').textContent = result.emailStatus === 'sent' ? 'Order email accepted for delivery.' : 'Email could not be sent. Your order is saved; try again later.';
+    await loadOrders();
+  } catch (error) { $('#status').textContent = error.message;button.disabled = false; }
 }
 async function loadCatalog() {
   products = await api('/api/admin/catalog');

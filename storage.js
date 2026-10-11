@@ -19,6 +19,16 @@ export function localStore(dataDir) {
       await mkdir(dataDir, { recursive: true, mode: 0o700 });
       await appendFile(path.join(dataDir, 'orders.jsonl'), JSON.stringify(order) + '\n', { mode: 0o600 });
     },
+    async updateOrder(order) {
+      const filename = path.join(dataDir, 'orders.jsonl');
+      const lines = (await readFile(filename, 'utf8')).trim().split('\n').map(JSON.parse);
+      const index = lines.findIndex(saved => saved.id === order.id);
+      if (index < 0) throw Error('Order not found.');
+      lines[index] = order;
+      const temporary = path.join(dataDir, `orders-${randomUUID()}.tmp`);
+      await writeFile(temporary, lines.map(value=>JSON.stringify(value)).join('\n')+'\n', {mode:0o600});
+      await rename(temporary, filename);
+    },
     async loadOrders() {
       let content = '';
       try { content = await readFile(path.join(dataDir, 'orders.jsonl'), 'utf8'); }
@@ -57,6 +67,9 @@ export function supabaseStore({ url, key, fetchImpl = fetch }) {
     },
     async saveOrder(order) {
       await request('scrubs_orders', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ id: order.id, created_at: order.createdAt, payload: order }) });
+    },
+    async updateOrder(order) {
+      await request('scrubs_orders?id=eq.' + encodeURIComponent(order.id), {method:'PATCH', body:JSON.stringify({payload:order})});
     },
     async loadOrders() {
       const orders = [];

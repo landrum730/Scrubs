@@ -18,3 +18,7 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: SCRUBS_ORDER_EMAIL
+        value: manager@landrument.com
+      - key: SCRUBS_EMAIL_FROM
+        value: manager@landrument.com

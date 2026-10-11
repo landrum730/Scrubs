@@ -113,7 +113,7 @@ $('#order-form').onsubmit = async event => {
     const result = await response.json();
     if (!response.ok) throw Error(result.error);
     cart = []; persist(); event.target.reset();
-    $('#message').textContent = 'Order submitted! Your administrator can now review it. Reference: ' + result.id;
+    $('#message').textContent = 'Order submitted! Your administrator can now review it. ' + (result.emailStatus === 'sent' ? 'The manager email has been accepted for delivery. ' : 'The order is saved in the administrator workspace; its email notification is pending. ') + 'Reference: ' + result.id;
   } catch (error) { $('#message').textContent = error.message || 'Could not submit your order. Please try again.'; }
   finally { sending = false; renderCart(); }
 };

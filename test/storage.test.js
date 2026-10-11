@@ -29,6 +29,13 @@ test('Supabase storage preserves catalog and orders across adapter restarts with
       rows.set(table + ':' + record.id, record);
       return new Response(null, { status: 204 });
     }
+    if (options.method === 'PATCH') {
+      const id = url.searchParams.get('id').slice(3);
+      const key = table + ':' + id;
+      assert.ok(rows.has(key));
+      rows.set(key, {...rows.get(key), ...JSON.parse(options.body)});
+      return new Response(null, {status:204});
+    }
     const result = [...rows.entries()].filter(([key]) => key.startsWith(table + ':')).map(([, row]) => ({ payload: row.payload }));
     return Response.json(result);
   };
@@ -41,6 +48,9 @@ test('Supabase storage preserves catalog and orders across adapter restarts with
   store = make();
   assert.deepEqual(await store.loadCatalog(), updated);
   assert.deepEqual(await store.loadOrders(), [order]);
+  order.emailNotification = {status:'sent',to:'manager@landrument.com'};
+  await store.updateOrder(order);
+  assert.deepEqual(await make().loadOrders(),[order]);
   assert.ok(calls.every(call => call.address.startsWith('https://test-project.supabase.co/rest/v1/')));
 });
 
