@@ -1,4 +1,4 @@
-import { allowanceCounts, allowanceError, required } from './policy.js';
+import { allowanceCounts, allowanceError, collectionError, collectionBalances, collectionKey, required } from './policy.js';
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const labels = { Tops: 'Top for a scrub set', Pants: 'Pants for a scrub set', Sets: 'Complete scrub set', 'Long sleeves': 'Additional long-sleeve top', Jackets: 'Additional jacket' };
@@ -8,11 +8,27 @@ function persist() { try { localStorage.setItem('scrubs-cart', JSON.stringify(ca
 function renderProducts(filter = 'All') {
   const products = catalog.filter(p => filter === 'All' || (filter === 'Long sleeves' ? p.allowances.includes(filter) : p.category === filter));
   $('#product-count').textContent = products.length + ' approved options';
-  $('#products').innerHTML = products.map(p => `<article class="product"><div class="product-art ${p.category === 'Pants' ? 'pants' : p.category === 'Jackets' ? 'jacket' : p.category === 'Sets' ? 'set' : 'top'}"><div class="garment" aria-hidden="true"></div><span class="badge">APPROVED</span></div><div class="product-info"><span class="category">${escape(p.category)}</span><h3>${escape(p.name)}</h3><p class="price">${escape(p.collection)} · ${escape(p.sku)}</p><a class="product-link" href="${escape(p.url)}" target="_blank" rel="noopener noreferrer">View style details ↗</a><form data-product="${escape(p.id)}"><label>Use toward<select name="allowance">${p.allowances.map(a => `<option value="${escape(a)}">${escape(labels[a])}</option>`).join('')}</select></label><label>Color<select name="color"></select></label><label class="white-assignment" hidden>Count this white top toward<select name="setColor"><option value="Black">Black set</option><option value="Navy">Navy set</option></select></label><div class="choices"><label>${p.category === 'Sets' ? 'Set size' : 'Size'}<select name="size" required><option value="">Select size</option>${p.sizes.map(s => `<option>${escape(s)}</option>`).join('')}</select></label><label>Qty<input name="quantity" type="number" min="1" max="3" value="1" required></label></div><button class="add" type="submit">Add to cart <span>+</span></button><p class="product-status" role="status"></p></form></div></article>`).join('');
+  const groups = new Map();
+  for (const p of products) {
+    const key = p.matchAnyCollection ? 'underscrubs' : collectionKey(p.collection);
+    if (!groups.has(key)) groups.set(key, { name: p.matchAnyCollection ? 'Mix-and-match underscrub tops' : p.collection, items: [], wildcard: p.matchAnyCollection });
+    groups.get(key).items.push(p);
+  }
+  $('#products').innerHTML = [...groups.values()].map(group => `<section class="collection-group"><div class="collection-heading"><div><h3>${escape(group.name)}</h3><p>${group.wildcard ? 'These tops can pair with pants from any approved collection.' : 'Choose your top and pants from this collection for a matching set. Long-sleeve and jacket extras are separate.'}</p></div><span>${group.items.length} ${group.items.length === 1 ? 'style' : 'styles'}</span></div><div class="products">${group.items.map(p => `<article class="product"><div class="product-art"><img class="supplier-photo" alt="${escape(p.name)} — supplier photograph" loading="lazy" referrerpolicy="no-referrer"><span class="badge">APPROVED</span><span class="photo-unavailable" hidden>Product photo unavailable</span></div><div class="product-info"><span class="category">${escape(p.category)}</span><h3>${escape(p.name)}</h3><p class="price">${escape(p.collection)} · ${escape(p.sku)}</p><p class="photo-caption"></p><a class="product-link" href="${escape(p.url)}" target="_blank" rel="noopener noreferrer">View style details ↗</a><form data-product="${escape(p.id)}"><label>Use toward<select name="allowance">${p.allowances.map(a => `<option value="${escape(a)}">${escape(labels[a])}</option>`).join('')}</select></label><label>Color<select name="color"></select></label><label class="white-assignment" hidden>Count this white top toward<select name="setColor"><option value="Black">Black set</option><option value="Navy">Navy set</option></select></label><div class="choices"><label>${p.category === 'Sets' ? 'Set size' : 'Size'}<select name="size" required><option value="">Select size</option>${p.sizes.map(s => `<option>${escape(s)}</option>`).join('')}</select></label><label>Qty<input name="quantity" type="number" min="1" max="3" value="1" required></label></div><button class="add" type="submit">Add to cart <span>+</span></button><p class="product-status" role="status"></p></form></div></article>`).join('')}</div></section>`).join('');
   document.querySelectorAll('[data-product]').forEach(form => {
     const product = catalog.find(p => p.id === form.dataset.product);
     const allowance = form.elements.allowance, color = form.elements.color;
-    const updateAssignment = () => { form.querySelector('.white-assignment').hidden = color.value !== 'White'; };
+    const card = form.closest('.product'), photo = card.querySelector('.supplier-photo');
+    const updateAssignment = () => {
+      form.querySelector('.white-assignment').hidden = color.value !== 'White';
+      const source = product.images?.[color.value] || product.imageUrl || product.images?.default;
+      photo.hidden = !source;
+      card.querySelector('.photo-unavailable').hidden = Boolean(source);
+      card.querySelector('.photo-caption').textContent = product.images?.[color.value] ? color.value + ' · supplier photo' : 'Supplier style photo · photo color may vary';
+      if (source) photo.src = source;
+    };
+    photo.onerror = () => { photo.hidden = true; card.querySelector('.photo-unavailable').hidden = false; };
+    photo.onload = () => { photo.hidden = false; card.querySelector('.photo-unavailable').hidden = true; };
     const updateColors = () => {
       const previous = color.value;
       color.innerHTML = product.colors.filter(c => c !== 'White' || allowance.value === 'Tops').map(c => `<option>${escape(c)}</option>`).join('');
@@ -40,10 +56,12 @@ function renderCart() {
   $('#checkout').hidden = !cart.length;
   $('#cart-items').innerHTML = cart.length ? cart.map((item, index) => {
     const p = catalog.find(p => p.id === item.id);
-    return `<div class="cart-row"><div><strong>${escape(p.name)}</strong><p>${escape(item.color)} · Size ${escape(item.size)} · ${escape(labels[item.allowance])}${item.color === 'White' ? ' (' + escape(item.setColor) + ' set)' : ''}</p><small>${escape(p.sku)}</small></div><label>Qty<input type="number" min="1" max="3" value="${item.quantity}" data-quantity="${index}"></label><button class="remove" data-remove="${index}" aria-label="Remove ${escape(p.name)}">Remove</button></div>`;
+    return `<div class="cart-row"><div><strong>${escape(p.name)}</strong><p>${escape(item.color)} · Size ${escape(item.size)} · ${escape(labels[item.allowance])}${item.color === 'White' ? ' (' + escape(item.setColor) + ' set)' : ''}</p><small>${escape(p.collection)} · ${escape(p.sku)}</small></div><label>Qty<input type="number" min="1" max="3" value="${item.quantity}" data-quantity="${index}"></label><button class="remove" data-remove="${index}" aria-label="Remove ${escape(p.name)}">Remove</button></div>`;
   }).join('') : '<p class="empty">Choose your styles above to build your five scrub sets.</p>';
   const counts = allowanceCounts(cart, catalog);
-  const error = allowanceError(counts);
+  const error = allowanceError(counts) || collectionError(cart, catalog);
+  const balances = collectionBalances(cart, catalog);
+  $('#collection-check').innerHTML = Object.entries(balances).flatMap(([color, collections]) => Object.values(collections).map(group => `<p class="collection-balance">${escape(color)} · ${escape(group.name)}: ${group.Tops} tops / ${group.Pants} pants${group.Pants > group.Tops ? ' (underscrubs can fill the remaining tops)' : ''}</p>`)).join('');
   $('#allowance').innerHTML = Object.entries(required).map(([color, target]) => `<div class="allowance-line"><strong>${color}: ${target} required sets</strong><span>${counts[color].Tops}/${target} tops · ${counts[color].Pants}/${target} pants</span></div><div class="allowance-line optional"><span>${color} extras (optional)</span><span>${counts[color]['Long sleeves']}/1 long sleeve · ${counts[color].Jackets}/1 jacket</span></div>`).join('');
   $('#submit-order').disabled = sending || Boolean(error);
   $('#allowance-help').textContent = error || 'Your five sets are complete. Add optional long sleeves or jackets, or send your order.';
@@ -63,7 +81,7 @@ document.querySelectorAll('[data-filter]').forEach(button => button.onclick = ()
 $('#cart-link').onclick = () => $('#cart').scrollIntoView({ behavior: 'smooth' });
 $('#order-form').onsubmit = async event => {
   event.preventDefault();
-  if (sending || allowanceError(allowanceCounts(cart, catalog))) return;
+  if (sending || allowanceError(allowanceCounts(cart, catalog)) || collectionError(cart, catalog)) return;
   sending = true; renderCart(); $('#message').textContent = 'Sending your order…';
   try {
     const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee: Object.fromEntries(new FormData(event.target)), items: cart }) });

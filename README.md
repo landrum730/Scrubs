@@ -1,10 +1,10 @@
 # Scrubs
 
-An employee uniform shop with an approved catalog, browser cart, server-validated allowances, and a protected administrator workspace.
+Landrum ENT employee uniforms, branded with the official Landrum ENT logo and its navy (#082A61), blue (#00A7EB), and slate (#7992B1) palette. The shop has a collection-grouped approved catalog, live supplier photos, browser cart, server-validated allowances, and a protected administrator workspace.
 
 ## Employee allowance
 
-Each submission requires **3 black sets and 2 navy sets**. A set is one top and one pair of pants; styles and sizes may be mixed. A packaged complete set counts toward both pieces and uses a single size. Underscrubs are eligible as tops. White CK773 tops must be explicitly assigned to a black or navy set and cannot be counted twice.
+Each submission requires **3 black sets and 2 navy sets**. A set is one top and one pair of pants **from the same collection**; styles and sizes may be mixed within that collection. Employees may choose sets from multiple collections, but each collection must have matching top/pant counts within each color. A packaged complete set counts toward both pieces and uses a single size. Underscrubs CK4881CL and CK773 are eligible as tops and may pair with pants from any approved collection. White CK773 tops must be explicitly assigned to a black or navy set and cannot be counted twice.
 
 Employees may optionally add **1 black and 1 navy long-sleeve top**, plus **1 black and 1 navy jacket**, in addition to the five sets. Long-sleeve styles CK962A, CK4881CL, and CK773 can be selected either as a required top or as an additional long sleeve. White is allowed only for required tops, not additional long sleeves. The five sets are required; extras are optional. These limits apply to each submitted order. Employee authentication and cumulative per-employee allotment tracking across multiple submissions are not implemented.
 
@@ -23,13 +23,15 @@ The server uses port 3000 (`PORT` overrides it). `/admin` is the administrator w
 
 ## Add or update approved styles
 
-In `/admin`, sign in and choose **Add approved style**. Enter the SKU, name, collection, HTTPS supplier link, category, sizes, and approved colors. For long-sleeve tops, select whether they qualify for the five required tops, the extra long-sleeve allowance, or both. Complete sets contribute both a top and pants; jackets use the extra jacket allowance. Only tops may have white as an approved color.
+In `/admin`, sign in and choose **Add approved style**. Enter the SKU, name, collection, HTTPS supplier link, category, sizes, and approved colors. Enter live HTTPS supplier photo links in the default and/or color-specific photo fields (right-click a supplier product photo and choose Copy image address). Use the same collection name for matching tops and pants; only actual approved underscrubs should be marked as able to pair with any collection. For long-sleeve tops, select whether they qualify for the five required tops, the extra long-sleeve allowance, or both. Complete sets contribute both a top and pants; jackets use the extra jacket allowance. Only tops may have white as an approved color.
 
 Choose **Edit** to update an existing style or clear **Active** to retire it. Retired items disappear from the employee shop and cannot be submitted. Submitted orders retain the names, SKUs, sizes, colors, product links, and allowance assignments recorded at submission. Existing carts are validated against the latest catalog on submission; employees should reload to see newly approved styles.
 
 ## Data and validation
 
-Orders are saved to `data/orders.jsonl`; catalog changes are saved atomically to `data/catalog.json`. Both use restricted file permissions. `SCRUBS_DATA_DIR` overrides the directory. Back up the entire data directory and use durable storage for deployment. This is a single-instance implementation; use a database and employee authentication before deploying a multi-instance service or enforcing a cumulative employee allotment. Catalog changes require administrator authentication. UI escapes catalog and employee text, and the server validates sizes, colors, approved allowance types, white assignments, and quantity limits.
+Orders are saved to `data/orders.jsonl`; catalog changes are saved atomically to `data/catalog.json`. Both use restricted file permissions. `SCRUBS_DATA_DIR` overrides the directory. Back up the entire data directory and use durable storage for deployment. This is a single-instance implementation; use a database and employee authentication before deploying a multi-instance service or enforcing a cumulative employee allotment. Catalog changes require administrator authentication. UI escapes catalog and employee text, and the server validates sizes, colors, approved allowance types, white assignments, collection matching, and quantity limits.
+
+`catalog.js` defines the initial styles, and `product-images.js` records actual live photo URLs extracted from the supplied supplier pages. CK962A and the packaged unisex set are Workwear Originals Ultra, as confirmed by their supplier descriptions. The logo in `public/assets/landrum-logo.svg` comes from Landrum ENT's official website. Live photos are loaded directly from supplier websites, change with color when available, and may stop working if the supplier changes its URLs. The CK4881CL page currently supplies only a black photo; navy selection uses the black style photo with an explicit color disclaimer. Existing saved catalogs get missing image/mix-and-match fields filled from the initial catalog, while existing administrator overrides and historical orders remain intact.
 
 `catalog.js` defines the initial styles; administrator updates persist separately. `public/policy.js` contains allowance counting shared by the browser and server. Tests exercise the order API, access protection, allowance rules, catalog edits and retirement, persistence across restarts, and historical order details.
 

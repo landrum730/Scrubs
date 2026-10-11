@@ -4,7 +4,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { catalog } from './catalog.js';
-import { allowanceCounts, allowanceError } from './public/policy.js';
+import { allowanceCounts, allowanceError, collectionError } from './public/policy.js';
 import { localStore, supabaseStore } from './storage.js';
 export { catalog, allowanceCounts };
 
@@ -32,6 +32,24 @@ export function validateProduct(input, id) {
   if (product.allowances.includes('Long sleeves') && !product.colors.some(c => c === 'Black' || c === 'Navy')) throw Error('Additional long sleeves need an approved black or navy color.');
   if (typeof input.active !== 'boolean') throw Error('Choose whether the style is active.');
   product.active = input.active;
+  if (input.matchAnyCollection !== undefined && typeof input.matchAnyCollection !== 'boolean') throw Error('Choose whether this is a mix-and-match underscrub.');
+  product.matchAnyCollection = Boolean(input.matchAnyCollection);
+  if (product.matchAnyCollection && (product.category !== 'Tops' || !product.allowances.includes('Tops'))) throw Error('Only approved scrub tops can match any collection.');
+  function imageLink(value) {
+    let image;
+    try { image = new URL(value); } catch { throw Error('Enter a valid HTTPS image link.'); }
+    if (typeof value !== 'string' || image.protocol !== 'https:' || image.username || image.password || value.length > 2000) throw Error('Use an HTTPS image link without credentials.');
+    return image.href;
+  }
+  product.imageUrl = input.imageUrl ? imageLink(input.imageUrl) : '';
+  product.images = {};
+  if (input.images !== undefined) {
+    if (!input.images || typeof input.images !== 'object' || Array.isArray(input.images)) throw Error('Enter valid color image links.');
+    for (const [color, link] of Object.entries(input.images)) {
+      if (!['Black', 'Navy', 'White', 'default'].includes(color)) throw Error('Image colors must be Black, Navy, or White.');
+      if (link) product.images[color] = imageLink(link);
+    }
+  }
   return product;
 }
 
@@ -54,10 +72,12 @@ export function validateOrder(input, products = catalog) {
     if (item.color === 'White') {
       if (allowance !== 'Tops') throw Error('White tops count toward the five sets only. Additional long sleeves must be black or navy.');
     } else if (setColor !== item.color) throw Error('The allowance color must match the garment color.');
-    return { id: product.id, sku: product.sku, name: product.name, collection: product.collection, url: product.url, category: product.category, color: item.color, setColor, allowance, size: item.size, quantity: item.quantity };
+    return { id: product.id, sku: product.sku, name: product.name, collection: product.collection, url: product.url, category: product.category, color: item.color, setColor, allowance, size: item.size, quantity: item.quantity, matchAnyCollection: product.matchAnyCollection };
   });
   const error = allowanceError(allowanceCounts(items, products));
   if (error) throw Error(error);
+  const mismatch = collectionError(items, products);
+  if (mismatch) throw Error(mismatch);
   return { id: randomUUID(), createdAt: new Date().toISOString(), status: 'Submitted', employee, items, sets: { Black: 3, Navy: 2 } };
 }
 
@@ -73,7 +93,16 @@ async function jsonBody(req) {
 export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.resolve('data'), adminToken = process.env.SCRUBS_ADMIN_TOKEN, storage = process.env.SCRUBS_STORAGE || 'local', store } = {}) {
   if (!['local', 'supabase'].includes(storage)) throw Error('SCRUBS_STORAGE must be local or supabase.');
   store ||= storage === 'supabase' ? supabaseStore({ url: process.env.SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY }) : localStore(dataDir);
-  const { loadCatalog, saveCatalog, saveOrder, loadOrders } = store;
+  const { loadCatalog: readCatalog, saveCatalog, saveOrder, loadOrders } = store;
+  async function loadCatalog() {
+    return (await readCatalog()).map(product => {
+      const initial = catalog.find(p => p.id === product.id);
+      // Upgrade older saved catalogs without replacing administrator changes.
+      const result = { ...product, matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
+      if (product.id === 'CK962A' && product.collection === 'Cherokee' || product.id === 'UNISEX-SET' && product.collection === 'AllHeart') result.collection = initial.collection;
+      return result;
+    });
+  }
   let mutation = Promise.resolve();
   const mutate = operation => {
     const next = mutation.then(operation);
@@ -124,11 +153,11 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
       if (req.method === 'GET' && url.pathname === '/api/admin/orders') {
         return send(200, await loadOrders());
       }
-      const files = { '/': 'index.html', '/admin': 'admin.html', '/style.css': 'style.css', '/app.js': 'app.js', '/admin.js': 'admin.js', '/policy.js': 'policy.js' };
+      const files = { '/': 'index.html', '/admin': 'admin.html', '/style.css': 'style.css', '/app.js': 'app.js', '/admin.js': 'admin.js', '/policy.js': 'policy.js', '/assets/landrum-logo.svg': 'assets/landrum-logo.svg' };
       if (req.method !== 'GET' || !files[url.pathname]) return send(404, { error: 'Not found.' });
       const filename = files[url.pathname];
       const content = await readFile(new URL('./public/' + filename, import.meta.url));
-      res.writeHead(200, { 'Content-Type': filename.endsWith('.css') ? 'text/css' : filename.endsWith('.js') ? 'text/javascript' : 'text/html', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'" });
+      res.writeHead(200, { 'Content-Type': filename.endsWith('.css') ? 'text/css' : filename.endsWith('.js') ? 'text/javascript' : filename.endsWith('.svg') ? 'image/svg+xml' : 'text/html', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' https:; frame-ancestors 'none'; base-uri 'self'" });
       res.end(content);
     } catch (error) { send(error.status || 500, { error: error.status ? error.message : 'Unable to save or retrieve your changes. Please try again.' }); }
   });

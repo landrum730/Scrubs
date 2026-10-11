@@ -28,6 +28,9 @@ test('all supplied styles are included once with their approved colors', () => {
   assert.deepEqual(catalog.filter(p => p.colors.includes('White')).map(p => p.id), ['CK773']);
   assert.equal(catalog.filter(p => p.category === 'Sets').length, 1);
   assert.equal(catalog.filter(p => p.category === 'Jackets').length, 2);
+  assert.ok(catalog.every(p => p.imageUrl.startsWith('https://')));
+  assert.equal(catalog.find(p => p.id === 'CK962A').collection, 'Cherokee Workwear Originals Ultra');
+  assert.equal(catalog.find(p => p.id === 'UNISEX-SET').collection, 'Cherokee Workwear Originals Ultra');
 });
 
 test('required five sets reject incomplete, excess, duplicate, and invalid selections', () => {
@@ -62,6 +65,23 @@ test('complete sets supply both pieces; long sleeves and jackets are separate op
   for (const extra of extras) assert.throws(() => validateOrder({ employee, items: [...items, ...extras, extra] }), /at most 1/);
   assert.throws(() => validateOrder({ employee, items: [...items, item('CK00038', 'Black', 1, { allowance: 'Long sleeves' })] }), /not approved/);
   assert.throws(() => validateOrder({ employee, items: [...extras, items[2], items[3]] }), /Complete/);
+});
+
+test('tops and pants match their collection per color; underscrubs may fill any collection', () => {
+  const mismatch = structuredClone(items); mismatch[2].id = 'CK096';
+  assert.throws(() => validateOrder({ employee, items: mismatch }), /same collection/);
+  const mixed = [item('CK00038', 'Black', 2), item('CK936', 'Black', 1), item('CK115', 'Black', 2), item('CK096', 'Black', 1), item('CK953', 'Navy', 2), item('CK272', 'Navy', 2)];
+  assert.ok(validateOrder({ employee, items: mixed }).id);
+  mixed[2].quantity = 1; mixed[3].quantity = 2;
+  assert.throws(() => validateOrder({ employee, items: mixed }), /same collection/);
+  mixed[0].quantity = 1; mixed[1].quantity = 1; mixed.push(item('CK773', 'White', 1, { setColor: 'Black' }));
+  assert.ok(validateOrder({ employee, items: mixed }).id);
+  const crossColor = [item('CK00038', 'Black', 3), item('CK936', 'Navy', 2), item('CK096', 'Black', 3), item('CK115', 'Navy', 2)];
+  assert.throws(() => validateOrder({ employee, items: crossColor }), /same collection/);
+  const spoof = mismatch.map(i => ({ ...i, matchAnyCollection: true }));
+  assert.throws(() => validateOrder({ employee, items: spoof }), /same collection/);
+  const longSleeve = [item('CK962A', 'Black', 3), item('CK953', 'Navy', 2), item('CK272', 'Black', 3), item('CK00034', 'Navy', 2)];
+  assert.ok(validateOrder({ employee, items: longSleeve }).id);
 });
 
 test('orders persist with original style details and administrator access is protected', async () => withServer(async (base, restart) => {
@@ -109,4 +129,33 @@ test('catalog validation rejects unsafe links and incompatible garment allowance
   assert.throws(() => validateProduct({ ...product, colors: ['Red'] }, 'new'), /approved colors/);
   assert.throws(() => validateProduct({ ...product, sizes: [] }, 'new'), /size/);
   assert.throws(() => validateProduct({ ...product, colors: ['White'], allowances: ['Long sleeves'] }, 'new'), /White requires/);
+  assert.throws(() => validateProduct({ ...product, imageUrl: 'javascript:alert(1)' }, 'new'), /HTTPS/);
+  assert.throws(() => validateProduct({ ...product, images: { Black: 'http://example.com/image.jpg' } }, 'new'), /HTTPS/);
+  assert.throws(() => validateProduct({ ...product, category: 'Pants', allowances: ['Pants'], matchAnyCollection: true }, 'new'), /Only approved scrub tops/);
+});
+
+test('older saved catalogs receive photos and collection corrections without overwriting administrator changes', async () => {
+  const old = structuredClone(catalog).map(p => { delete p.images; delete p.imageUrl; delete p.matchAnyCollection; return p; });
+  old.find(p => p.id === 'CK962A').collection = 'Cherokee';
+  old.find(p => p.id === 'UNISEX-SET').collection = 'AllHeart';
+  old[0].collection = 'Administrator customized collection';
+  old[0].imageUrl = 'https://example.com/custom-photo.jpg';
+  let saved;
+  const store = { loadCatalog: async () => structuredClone(old), saveOrder: async order => { saved = order; } };
+  const server = createServer({ store, storage: 'local' });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = 'http://127.0.0.1:' + server.address().port;
+  try {
+    const response = await fetch(base + '/api/catalog');
+    const products = await response.json();
+    assert.equal(products[0].collection, 'Administrator customized collection');
+    assert.equal(products[0].imageUrl, 'https://example.com/custom-photo.jpg');
+    assert.equal(products.find(p => p.id === 'CK962A').collection, 'Cherokee Workwear Originals Ultra');
+    assert.equal(products.find(p => p.id === 'CK773').matchAnyCollection, true);
+    assert.ok(products.every(p => Object.keys(p.images).length));
+    const selection = [item('CK962A', 'Black', 3), item('CK272', 'Black', 3), item('CK773', 'White', 2, { setColor: 'Navy' }), item('CK096', 'Navy', 2)];
+    assert.equal((await post(base, { employee, items: selection })).status, 201);
+    assert.equal(saved.items[0].collection, 'Cherokee Workwear Originals Ultra');
+    assert.equal((await fetch(base + '/assets/landrum-logo.svg')).headers.get('content-type'), 'image/svg+xml');
+  } finally { await new Promise(resolve => server.close(resolve)); }
 });
