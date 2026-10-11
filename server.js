@@ -25,6 +25,11 @@ export function validateProduct(input, id) {
   product.colors = [...new Set(input.colors)];
   if (!Array.isArray(input.sizes) || !input.sizes.length || input.sizes.length > 30 || input.sizes.some(s => typeof s !== 'string' || !s.trim() || s.length > 30)) throw Error('Enter at least one valid size.');
   product.sizes = [...new Set(input.sizes.map(s => s.trim()))];
+  product.inseams = [];
+  if (['Pants', 'Sets'].includes(product.category)) {
+    if (!Array.isArray(input.inseams) || !input.inseams.length || input.inseams.length > 15 || input.inseams.some(s => typeof s !== 'string' || !s.trim() || s.length > 30)) throw Error('Enter at least one approved inseam for pants or sets.');
+    product.inseams = [...new Set(input.inseams.map(s => s.trim()))];
+  }
   const options = input.category === 'Tops' ? ['Tops', 'Long sleeves'] : [input.category];
   if (!Array.isArray(input.allowances) || !input.allowances.length || input.allowances.some(a => !options.includes(a))) throw Error('Choose an allowance supported by this category.');
   product.allowances = [...new Set(input.allowances)];
@@ -65,6 +70,9 @@ export function validateOrder(input, products = catalog) {
   const items = input.items.map(item => {
     const product = products.find(p => p.id === item?.id && p.active);
     if (!product || !product.colors.includes(item.color) || !product.sizes.includes(item.size) || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 3) throw Error('Choose an active approved style, color, size, and quantity (1–3).');
+    const needsInseam = ['Pants', 'Sets'].includes(product.category);
+    if (needsInseam && !product.inseams?.includes(item.inseam)) throw Error('Choose an approved inseam for each pair of pants or complete set.');
+    if (!needsInseam && item.inseam) throw Error('Inseam applies only to pants or complete sets.');
     const allowance = item.allowance || product.category;
     if (!product.allowances.includes(allowance)) throw Error('This style is not approved for the selected allowance.');
     const setColor = item.setColor || item.color;
@@ -72,7 +80,7 @@ export function validateOrder(input, products = catalog) {
     if (item.color === 'White') {
       if (allowance !== 'Tops') throw Error('White tops count toward the five sets only. Additional long sleeves must be black or navy.');
     } else if (setColor !== item.color) throw Error('The allowance color must match the garment color.');
-    return { id: product.id, sku: product.sku, name: product.name, collection: product.collection, url: product.url, category: product.category, color: item.color, setColor, allowance, size: item.size, quantity: item.quantity, matchAnyCollection: product.matchAnyCollection };
+    return { id: product.id, sku: product.sku, name: product.name, collection: product.collection, url: product.url, category: product.category, color: item.color, setColor, allowance, size: item.size, ...(needsInseam ? { inseam: item.inseam } : {}), quantity: item.quantity, matchAnyCollection: product.matchAnyCollection };
   });
   const error = allowanceError(allowanceCounts(items, products));
   if (error) throw Error(error);
@@ -98,7 +106,7 @@ export function createServer({ dataDir = process.env.SCRUBS_DATA_DIR || path.res
     return (await readCatalog()).map(product => {
       const initial = catalog.find(p => p.id === product.id);
       // Upgrade older saved catalogs without replacing administrator changes.
-      const result = { ...product, matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
+      const result = { ...product, inseams: product.inseams ?? initial?.inseams ?? (['Pants', 'Sets'].includes(product.category) ? ['Regular'] : []), matchAnyCollection: product.matchAnyCollection ?? initial?.matchAnyCollection ?? false, images: product.images ?? initial?.images ?? {}, imageUrl: product.imageUrl ?? initial?.imageUrl ?? '' };
       if (product.id === 'CK962A' && product.collection === 'Cherokee' || product.id === 'UNISEX-SET' && product.collection === 'AllHeart') result.collection = initial.collection;
       return result;
     });

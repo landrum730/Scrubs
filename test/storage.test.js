@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { supabaseStore } from '../storage.js';
 import { catalog, createServer, validateOrder } from '../server.js';
-const validOrder = () => validateOrder({ employee: { name: 'Test Employee', email: 'test@example.com', department: 'Nursing' }, items: [{ id: 'UNISEX-SET', color: 'Black', size: 'M', quantity: 3 }, { id: 'UNISEX-SET', color: 'Navy', size: 'M', quantity: 2 }] });
+const validOrder = () => validateOrder({ employee: { name: 'Test Employee', email: 'test@example.com', department: 'Nursing' }, items: [{ id: 'UNISEX-SET', color: 'Black', size: 'M', inseam: 'Regular', quantity: 3 }, { id: 'UNISEX-SET', color: 'Navy', size: 'M', inseam: 'Regular', quantity: 2 }] });
 
 test('copied Data API URLs and project URLs use the same REST endpoint', async () => {
   for (const suffix of ['', '/', '/rest/v1', '/rest/v1/']) {

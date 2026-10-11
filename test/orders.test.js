@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createServer, validateOrder, catalog, validateProduct } from '../server.js';
 const employee = { name: 'Test Employee', email: 'employee@example.com', department: 'Nursing' };
-const item = (id, color, quantity, extra = {}) => ({ id, color, size: 'M', quantity, ...extra });
+const item = (id, color, quantity, extra = {}) => ({ id, color, size: 'M', quantity, ...(catalog.find(p=>p.id===id)?.inseams.length ? {inseam:'Regular'} : {}), ...extra });
 const items = [item('CK00038', 'Black', 3), item('CK00038', 'Navy', 2), item('CK115', 'Black', 3), item('CK105', 'Navy', 2)];
 const auth = { Authorization: 'Bearer test-only-token', 'Content-Type': 'application/json' };
 async function withServer(run) {
@@ -131,11 +131,11 @@ test('catalog validation rejects unsafe links and incompatible garment allowance
   assert.throws(() => validateProduct({ ...product, colors: ['White'], allowances: ['Long sleeves'] }, 'new'), /White requires/);
   assert.throws(() => validateProduct({ ...product, imageUrl: 'javascript:alert(1)' }, 'new'), /HTTPS/);
   assert.throws(() => validateProduct({ ...product, images: { Black: 'http://example.com/image.jpg' } }, 'new'), /HTTPS/);
-  assert.throws(() => validateProduct({ ...product, category: 'Pants', allowances: ['Pants'], matchAnyCollection: true }, 'new'), /Only approved scrub tops/);
+  assert.throws(() => validateProduct({ ...product, category: 'Pants', allowances: ['Pants'], inseams: ['Regular'], matchAnyCollection: true }, 'new'), /Only approved scrub tops/);
 });
 
 test('older saved catalogs receive photos and collection corrections without overwriting administrator changes', async () => {
-  const old = structuredClone(catalog).map(p => { delete p.images; delete p.imageUrl; delete p.matchAnyCollection; return p; });
+  const old = structuredClone(catalog).map(p => { delete p.images; delete p.imageUrl; delete p.matchAnyCollection; delete p.inseams; return p; });
   old.find(p => p.id === 'CK962A').collection = 'Cherokee';
   old.find(p => p.id === 'UNISEX-SET').collection = 'AllHeart';
   old[0].collection = 'Administrator customized collection';
@@ -158,4 +158,21 @@ test('older saved catalogs receive photos and collection corrections without ove
     assert.equal(saved.items[0].collection, 'Cherokee Workwear Originals Ultra');
     assert.equal((await fetch(base + '/assets/landrum-logo.svg')).headers.get('content-type'), 'image/svg+xml');
   } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+
+test('inseam is required, approved, and retained on pants and complete sets', () => {
+ const selection=structuredClone(items);
+ selection[2].inseam='Petite';
+ assert.equal(validateOrder({employee,items:selection}).items[2].inseam,'Petite');
+ delete selection[2].inseam;
+ assert.throws(()=>validateOrder({employee,items:selection}),/approved inseam/);
+ selection[2].inseam='Tall';
+ assert.throws(()=>validateOrder({employee,items:selection}),/approved inseam/);
+ const sets=[item('UNISEX-SET','Black',3,{inseam:'Short'}),item('UNISEX-SET','Navy',2,{inseam:'Tall'})];
+ assert.deepEqual(validateOrder({employee,items:sets}).items.map(i=>i.inseam),['Short','Tall']);
+ const product=catalog.find(p=>p.id==='CK115');
+ assert.throws(()=>validateProduct({...product,inseams:[]},product.id),/approved inseam/);
+ const crossColor=structuredClone(items);crossColor[2].color='Navy';crossColor[3].color='Black';
+ assert.throws(()=>validateOrder({employee,items:crossColor}),/allowance|Complete/);
 });

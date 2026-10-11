@@ -14,7 +14,7 @@ function renderProducts(filter = 'All') {
     if (!groups.has(key)) groups.set(key, { name: p.matchAnyCollection ? 'Mix-and-match underscrub tops' : p.collection, items: [], wildcard: p.matchAnyCollection });
     groups.get(key).items.push(p);
   }
-  $('#products').innerHTML = [...groups.values()].map(group => `<section class="collection-group"><div class="collection-heading"><div><h3>${escape(group.name)}</h3><p>${group.wildcard ? 'These tops can pair with pants from any approved collection.' : 'Choose your top and pants from this collection for a matching set. Long-sleeve and jacket extras are separate.'}</p></div><span>${group.items.length} ${group.items.length === 1 ? 'style' : 'styles'}</span></div><div class="products">${group.items.map(p => `<article class="product"><div class="product-art"><img class="supplier-photo" alt="${escape(p.name)} — supplier photograph" loading="lazy" referrerpolicy="no-referrer"><span class="badge">APPROVED</span><span class="photo-unavailable" hidden>Product photo unavailable</span></div><div class="product-info"><span class="category">${escape(p.category)}</span><h3>${escape(p.name)}</h3><p class="price">${escape(p.collection)} · ${escape(p.sku)}</p><p class="photo-caption"></p><a class="product-link" href="${escape(p.url)}" target="_blank" rel="noopener noreferrer">View style details ↗</a><form data-product="${escape(p.id)}"><label>Use toward<select name="allowance">${p.allowances.map(a => `<option value="${escape(a)}">${escape(labels[a])}</option>`).join('')}</select></label><label>Color<select name="color"></select></label><label class="white-assignment" hidden>Count this white top toward<select name="setColor"><option value="Black">Black set</option><option value="Navy">Navy set</option></select></label><div class="choices"><label>${p.category === 'Sets' ? 'Set size' : 'Size'}<select name="size" required><option value="">Select size</option>${p.sizes.map(s => `<option>${escape(s)}</option>`).join('')}</select></label><label>Qty<input name="quantity" type="number" min="1" max="3" value="1" required></label></div><button class="add" type="submit">Add to cart <span>+</span></button><p class="product-status" role="status"></p></form></div></article>`).join('')}</div></section>`).join('');
+  $('#products').innerHTML = [...groups.values()].map(group => `<section class="collection-group"><div class="collection-heading"><div><h3>${escape(group.name)}</h3><p>${group.wildcard ? 'These tops can pair with pants from any approved collection.' : 'Choose your top and pants from this collection for a matching set. Long-sleeve and jacket extras are separate.'}</p></div><span>${group.items.length} ${group.items.length === 1 ? 'style' : 'styles'}</span></div><div class="products">${group.items.map(p => `<article class="product"><div class="product-art"><img class="supplier-photo" alt="${escape(p.name)} — supplier photograph" loading="lazy" referrerpolicy="no-referrer"><span class="badge">APPROVED</span><span class="photo-unavailable" hidden>Product photo unavailable</span></div><div class="product-info"><span class="category">${escape(p.category)}</span><h3>${escape(p.name)}</h3><p class="price">${escape(p.collection)} · ${escape(p.sku)}</p><p class="photo-caption"></p><a class="product-link" href="${escape(p.url)}" target="_blank" rel="noopener noreferrer">View style details ↗</a><form data-product="${escape(p.id)}"><label>Use toward<select name="allowance">${p.allowances.map(a => `<option value="${escape(a)}">${escape(labels[a])}</option>`).join('')}</select></label><label>Color<select name="color"></select></label><label class="white-assignment" hidden>Count this white top toward<select name="setColor"><option value="Black">Black set</option><option value="Navy">Navy set</option></select></label><div class="choices"><label>${p.category === 'Sets' ? 'Set size' : 'Size'}<select name="size" required><option value="">Select size</option>${p.sizes.map(s => `<option>${escape(s)}</option>`).join('')}</select></label>${p.inseams?.length ? `<label>Inseam<select name="inseam" required><option value="">Select inseam</option>${p.inseams.map(value => `<option>${escape(value)}</option>`).join('')}</select></label>` : ''}<label>Qty<input name="quantity" type="number" min="1" max="3" value="1" required></label></div><button class="add" type="submit">Add to cart <span>+</span></button><p class="product-status" role="status"></p></form></div></article>`).join('')}</div></section>`).join('');
   document.querySelectorAll('[data-product]').forEach(form => {
     const product = catalog.find(p => p.id === form.dataset.product);
     const allowance = form.elements.allowance, color = form.elements.color;
@@ -39,11 +39,12 @@ function renderProducts(filter = 'All') {
     form.addEventListener('submit', event => {
       event.preventDefault();
       const data = new FormData(form), status = form.querySelector('.product-status');
-      const item = { id: product.id, size: data.get('size'), color: data.get('color'), allowance: data.get('allowance'), quantity: Number(data.get('quantity')) };
+      const item = { id: product.id, size: data.get('size'), color: data.get('color'), allowance: data.get('allowance'), quantity: Number(data.get('quantity')), inseam: data.get('inseam') || '' };
       item.setColor = item.color === 'White' ? data.get('setColor') : item.color;
+      if (product.inseams?.length && !product.inseams.includes(item.inseam)) { status.textContent = 'Please select an inseam.'; return; }
       if (!item.size || !item.color || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 3) { status.textContent = 'Please choose a size, color, and quantity (1–3).'; return; }
       const candidate = structuredClone(cart);
-      const existing = candidate.find(i => ['id', 'size', 'color', 'allowance', 'setColor'].every(key => i[key] === item[key]));
+      const existing = candidate.find(i => ['id', 'size', 'inseam', 'color', 'allowance', 'setColor'].every(key => i[key] === item[key]));
       if (existing) existing.quantity += item.quantity; else candidate.push(item);
       const error = allowanceError(allowanceCounts(candidate, catalog), { complete: false });
       if (error) { status.textContent = error + ' Remove or adjust items in your cart first.'; return; }
@@ -56,15 +57,17 @@ function renderCart() {
   $('#checkout').hidden = !cart.length;
   $('#cart-items').innerHTML = cart.length ? cart.map((item, index) => {
     const p = catalog.find(p => p.id === item.id);
-    return `<div class="cart-row"><div><strong>${escape(p.name)}</strong><p>${escape(item.color)} · Size ${escape(item.size)} · ${escape(labels[item.allowance])}${item.color === 'White' ? ' (' + escape(item.setColor) + ' set)' : ''}</p><small>${escape(p.collection)} · ${escape(p.sku)}</small></div><label>Qty<input type="number" min="1" max="3" value="${item.quantity}" data-quantity="${index}"></label><button class="remove" data-remove="${index}" aria-label="Remove ${escape(p.name)}">Remove</button></div>`;
+    return `<div class="cart-row"><div><strong>${escape(p.name)}</strong><p>${escape(item.color)} · Size ${escape(item.size)} · ${escape(labels[item.allowance])}${item.color === 'White' ? ' (' + escape(item.setColor) + ' set)' : ''}</p><small>${escape(p.collection)} · ${escape(p.sku)}</small></div>${p.inseams?.length ? `<label class="inseam-choice">Inseam<select data-inseam="${index}"><option value="">Select inseam</option>${p.inseams.map(value => `<option${value === item.inseam ? ' selected' : ''}>${escape(value)}</option>`).join('')}</select></label>` : ''}<label>Qty<input type="number" min="1" max="3" value="${item.quantity}" data-quantity="${index}"></label><button class="remove" data-remove="${index}" aria-label="Remove ${escape(p.name)}">Remove</button></div>`;
   }).join('') : '<p class="empty">Choose your styles above to build your five scrub sets.</p>';
   const counts = allowanceCounts(cart, catalog);
-  const error = allowanceError(counts) || collectionError(cart, catalog);
+  const missingInseam = cart.some(item => {const p=catalog.find(p=>p.id===item.id);return p.inseams?.length && !p.inseams.includes(item.inseam);});
+  const error = missingInseam ? 'Choose an inseam for each pair of pants or complete set in your cart.' : allowanceError(counts) || collectionError(cart, catalog);
   const balances = collectionBalances(cart, catalog);
   $('#collection-check').innerHTML = Object.entries(balances).flatMap(([color, collections]) => Object.values(collections).map(group => `<p class="collection-balance">${escape(color)} · ${escape(group.name)}: ${group.Tops} tops / ${group.Pants} pants${group.Pants > group.Tops ? ' (underscrubs can fill the remaining tops)' : ''}</p>`)).join('');
   $('#allowance').innerHTML = Object.entries(required).map(([color, target]) => `<div class="allowance-line"><strong>${color}: ${target} required sets</strong><span>${counts[color].Tops}/${target} tops · ${counts[color].Pants}/${target} pants</span></div><div class="allowance-line optional"><span>${color} extras (optional)</span><span>${counts[color]['Long sleeves']}/1 long sleeve · ${counts[color].Jackets}/1 jacket</span></div>`).join('');
   $('#submit-order').disabled = sending || Boolean(error);
   $('#allowance-help').textContent = error || 'Your five sets are complete. Add optional long sleeves or jackets, or send your order.';
+  document.querySelectorAll('[data-inseam]').forEach(input => input.onchange = () => {cart[Number(input.dataset.inseam)].inseam=input.value;persist();});
   document.querySelectorAll('[data-remove]').forEach(button => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); persist(); });
   document.querySelectorAll('[data-quantity]').forEach(input => input.onchange = () => {
     const quantity = Number(input.value), candidate = structuredClone(cart);
@@ -81,7 +84,7 @@ document.querySelectorAll('[data-filter]').forEach(button => button.onclick = ()
 $('#cart-link').onclick = () => $('#cart').scrollIntoView({ behavior: 'smooth' });
 $('#order-form').onsubmit = async event => {
   event.preventDefault();
-  if (sending || allowanceError(allowanceCounts(cart, catalog)) || collectionError(cart, catalog)) return;
+  if (sending || cart.some(item => {const p=catalog.find(p=>p.id===item.id);return p.inseams?.length && !p.inseams.includes(item.inseam);}) || allowanceError(allowanceCounts(cart, catalog)) || collectionError(cart, catalog)) return;
   sending = true; renderCart(); $('#message').textContent = 'Sending your order…';
   try {
     const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee: Object.fromEntries(new FormData(event.target)), items: cart }) });
@@ -98,7 +101,9 @@ fetch('/api/catalog').then(response => { if (!response.ok) throw Error(); return
   cart = cart.filter(item => {
     const p = catalog.find(p => p.id === item?.id);
     if (!p) return false;
-    item.allowance ||= p.category; item.setColor ||= item.color;
+    item.allowance ||= p.category; item.setColor ||= item.color; item.inseam ||= '';
+    if (p.inseams?.length && !p.inseams.includes(item.inseam)) item.inseam='';
+    if (!p.inseams?.length) item.inseam='';
     return p.colors.includes(item.color) && p.sizes.includes(item.size) && p.allowances.includes(item.allowance) && Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 3 && ['Black', 'Navy'].includes(item.setColor) && (item.color === 'White' ? item.allowance === 'Tops' : item.setColor === item.color);
   });
   if (previousCount !== cart.length) $('#message').textContent = 'Some previously saved items are no longer approved and were removed from your cart.';

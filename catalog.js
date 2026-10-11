@@ -3,9 +3,11 @@ import { supplierImages } from './product-images.js';
 const sizes = ['XS', 'S', 'M', 'L', 'XL', '2XL'];
 const ua = 'https://www.uniformadvantage.com/';
 const ah = 'https://allheart.com/products/';
+// Length variants listed on the supplied supplier pages.
+const inseams = {CK115:['Petite','Regular'],CK105:['Petite','Regular','Tall'],CK096:['Petite','Regular'],CK272:['Petite','Regular','Tall'],CK00034:['Petite','Regular'],'UNISEX-SET':['Short','Regular','Tall']};
 const style = (id, name, collection, category, url, options = {}) => ({
   id, sku: id, name, collection, category, url,
-  colors: ['Black', 'Navy'], sizes: [...sizes],
+  colors: ['Black', 'Navy'], sizes: [...sizes], inseams: inseams[id] || [],
   allowances: [category], active: true, matchAnyCollection: false, images: supplierImages[id] || {}, imageUrl: supplierImages[id]?.default || supplierImages[id]?.Black || '', ...options
 });
 export const catalog = [
